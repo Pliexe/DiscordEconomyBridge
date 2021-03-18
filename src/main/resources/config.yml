@@ -1,0 +1,32 @@
+########################################
+########################################
+###                                  ###
+###      Discord Economy Bridge      ###
+###   Made by Pliexe/DiamondZombie   ###
+###                                  ###
+########################################
+
+# DO NOT SHARE THE BOT TOKEN WITH ANYONE!
+TOKEN: BOT_TOKEN
+
+# Status
+# Type of status, can be: (Playing, playing), (Watching, watching), (Listening, listening), (Streaming, streaming)
+# You can remove statusType and statusMessage if you want!
+statusType: Playing
+statusMessage: "!help"
+# Use this when using streaming status type to link your stream (not required when using streaming type)
+# statusStreamURL: "twitch.tv"
+
+# Bot prefix
+PREFIX: "!"
+
+# Currency
+Currency: "$"
+CurrencyLeftSide: false
+
+discordModerators:
+#  - "477622334182785025"
+#  - ROLEID2
+
+# Discord no permission message
+noPermissionMessage: "You don't have permission to run that command!"
