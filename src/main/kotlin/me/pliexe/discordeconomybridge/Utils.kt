@@ -1,6 +1,22 @@
 package me.pliexe.discordeconomybridge
 
+import org.bukkit.configuration.file.FileConfiguration
+import java.text.DecimalFormat
 import java.util.*
+
+fun getMultilineableString(config: FileConfiguration,path: String): String? {
+    if(config.isString(path)) {
+        return config.getString(path)
+    } else if(config.isList(path)) {
+        return config.getStringList(path).joinToString("\n")
+    } else return null
+}
+
+fun formatMoney(amount: Number, currency: String, leftSide: Boolean, formatter: DecimalFormat): String {
+    if(leftSide)
+        return currency + formatter.format(amount)
+    else return formatter.format(amount) + currency
+}
 
 class UUIDUtils {
     companion object {

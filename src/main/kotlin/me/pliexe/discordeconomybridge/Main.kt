@@ -112,7 +112,7 @@ class DiscordEconomyBridge : JavaPlugin() {
             return
         }
 
-        server.pluginManager.registerEvents(me.pliexe.discordeconomybridge.Listener(this), this)
+        server.pluginManager.registerEvents(Listener(this), this)
 
         try {
             jda = JDABuilder.createDefault(token)
@@ -131,7 +131,7 @@ class DiscordEconomyBridge : JavaPlugin() {
 
             jda!!.awaitReady()
         } catch (e: LoginException) {
-            logger.severe("Failed connecting to discord! Disabling plugin!")
+            logger.severe("Failed connecting to discord! Disabling plugin!\nReason: ${e.message}")
             pluginLoader.disablePlugin(this)
             return
         } catch (e: Exception) {
@@ -139,7 +139,7 @@ class DiscordEconomyBridge : JavaPlugin() {
                 pluginLoader.disablePlugin(this)
                 return
             }
-            logger.warning("An unknown error occurred building JDA...")
+            logger.warning("An unknown error occurred building JDA...\nError:${e.message}\n${e.stackTraceToString()}")
             pluginLoader.disablePlugin(this)
             return
         }

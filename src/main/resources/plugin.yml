@@ -7,6 +7,8 @@ author: pliexe
 
 depend: [Vault]
 
+loadbefore: [floodgate-bukkit]
+
 #commands:
 #  example:
 #    description: aaaa

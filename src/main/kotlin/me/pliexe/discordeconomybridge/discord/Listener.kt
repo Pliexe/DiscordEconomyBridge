@@ -1,18 +1,38 @@
 package me.pliexe.discordeconomybridge.discord
 
-import me.pliexe.discordeconomybridge.DiscordEconomyBridge
-import me.pliexe.discordeconomybridge.UUIDUtils
+import me.pliexe.discordeconomybridge.*
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.events.ReadyEvent
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
 import net.dv8tion.jda.api.hooks.ListenerAdapter
+import org.bukkit.Bukkit
 import org.bukkit.Server
 import org.bukkit.configuration.file.FileConfiguration
+import org.bukkit.entity.Player
 import java.awt.Color
+import java.text.DecimalFormat
+import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.HashMap
 
 class Listener(private  val main: DiscordEconomyBridge,private val server: Server, private val config: FileConfiguration) : ListenerAdapter() {
     private val logger = server.logger
+
+    private val failColor = if(config.isInt("onFailEmbedColor")) config.getInt("onFailEmbedColor") else 0xb72d0e
+
+    private val disabledCommands = if(config.isList("disabledCommands")) config.getStringList("disabledCommands") else null
+    private val customCommands = if(config.isConfigurationSection("customCommands")) config.getConfigurationSection("customCommands").getKeys(false) else null
+    private val customCommandAliases = HashMap<String, String>()
+
+    init {
+        customCommands?.forEach { commandName ->
+            if(config.isList("customCommands.$commandName.aliases")) {
+                config.getStringList("customCommands.$commandName.aliases").forEach { alias ->
+                    customCommandAliases[alias] = commandName
+                }
+            }
+        }
+    }
 
     override fun onReady(event: ReadyEvent) {
         logger.info("[Discord Economy Bridge Bot] Bot online!")
@@ -25,15 +45,135 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
 
         val rawArgs = event.message.contentRaw.split(" +".toRegex())
         val command = rawArgs[0].substring(prefix.length)
+
+        if(disabledCommands != null)
+            if(disabledCommands.contains(command)) return
+
         val args = rawArgs.subList(1, rawArgs.size)
+
+        if(customCommands != null)
+        {
+            var cmd: String? = if(customCommands.contains(command)) command else null
+            if(cmd == null) {
+                cmd = customCommandAliases[command]
+            }
+
+            if(cmd != null) {
+                val path = "customCommands.$cmd"
+
+                if(config.isBoolean("$path.adminCommand"))
+                    if(config.getBoolean("$path.adminCommand"))
+                        if(!main.moderatorManager.isModerator(event.member!!.roles)) {
+                            val embed = EmbedBuilder()
+                                .setDescription(config.getString("noPermissionMessage"))
+                                .setColor(Color(failColor))
+                                .build()
+
+                            event.channel.sendMessage(embed).queue()
+                            return
+                        }
+
+                if(config.isBoolean("$path.requiresInput"))
+                    if(config.getBoolean("$path.requiresInput"))
+                        if(args.isEmpty()) {
+                            val embed = EmbedBuilder()
+                                .setColor(failColor)
+                                .setDescription("This command requires any kind of input!")
+
+                            event.channel.sendMessage(embed.build()).queue()
+                            return
+                        }
+
+                val embedExists = config.isConfigurationSection("$path.embed")
+
+                val content = if(embedExists) null else getMultilineableString(config, "$path.content")
+                    ?.replace("{messageContent}", event.message.contentRaw)
+                    ?.replace("{messageContentWithoutCommand}", event.message.contentRaw.substring(prefix.length+command.length+1))
+
+                if(content == null && !embedExists) {
+                    event.channel.sendMessage("Invalid yaml configuration. Embed or Content must be present!").queue()
+                    return
+                }
+
+                var player: Player? = null
+
+                if(config.isList("$path.inputs")) {
+                    val inputs = config.getStringList("$path.inputs").filterNotNull()
+
+
+                    if(args.isEmpty() && inputs.isNotEmpty())
+                    {
+                        val embed = EmbedBuilder()
+                            .setColor(failColor)
+                            .setDescription("No arguments provided!\nUsage: $prefix$cmd ${inputs.joinToString(" ")}")
+
+                        event.channel.sendMessage(embed.build()).queue()
+                        return
+                    }
+
+                    inputs.forEachIndexed { index, input ->
+                        when(input) {
+                            "OnlinePlayer" -> {
+                                if(args.size <= index) {
+                                    val embed = EmbedBuilder()
+                                        .setColor(failColor)
+                                        .setDescription("No ${index + 1}. parameter provided\nUsage: $prefix$cmd ${inputs.joinToString(" ")}")
+
+                                    event.channel.sendMessage(embed.build()).queue()
+                                    return
+                                }
+
+                                player = server.getPlayer(args[index])
+
+                                if(player == null) {
+                                    val embed = EmbedBuilder()
+                                        .setColor(failColor)
+                                        .setDescription("Player not found!\nUsage: $prefix$cmd ${inputs.joinToString(" ")}")
+
+                                    event.channel.sendMessage(embed.build()).queue()
+                                    return
+                                }
+                            }
+                        }
+                    }
+                }
+
+                val sdf = SimpleDateFormat("dd.MM.yyyy")
+
+                if(player != null) {
+                    content?.replace("{username}", player!!.name)?.replace("{joinDate}", sdf.format(Date(player!!.firstPlayed)))
+                        ?.replace("{PlayerStatus}", "Online")?.replace("{playerStatus}", "online")
+                }
+
+
+                if(content == null) {
+                    val embed = getEmbedFromYml(config, "$path.embed", { text ->
+                        text
+                            .replace("{messageContent}", event.message.contentRaw)
+                            .replace("{messageContentWithoutCommand}", event.message.contentRaw.substring(prefix.length+command.length+1))
+
+                        Bukkit.getServer().logger.info("PLAYER IS NULL: ${player == null}")
+                        if(player != null) {
+                            text
+                                .replace("{username}", player!!.name)
+                                .replace("{joinDate}", sdf.format(Date(player!!.firstPlayed)))
+                                .replace("{PlayerStatus}", "Online")
+                                .replace("{playerStatus}", "online")
+                        } else text
+                    }).build()
+
+                    event.channel.sendMessage(embed).queue()
+                } else event.channel.sendMessage(content).queue()
+
+                return
+            }
+        }
 
         when(command) {
             "help" -> {
-                val embed = EmbedBuilder()
-                    .setTitle("These are the avaible commands")
-                    .addField("${prefix}balance", "See a player's current balance\nUsage: ${prefix}balance <username or uuid>\nAlias: ${prefix}bal", false)
-                    .addField("${prefix}addmoney", "Add balance to a player\nUsage: ${prefix}addmoney <amount> <username or uuid>", false)
-                    .addField("${prefix}removemoney", "Remove balance from a player\nUsage: ${prefix}removemoney <amount> <username or uuid>\nAlias: ${prefix}remmoney", false)
+                val embed = getEmbedFromYml(config, "helpCommandEmbed",{ text ->
+                    text.replace("{prefix}", prefix)
+                })
 
                 event.channel.sendMessage(embed.build()).queue()
             }
@@ -41,7 +181,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(event.member == null) {
                     val embed = EmbedBuilder()
                         .setDescription("Couldn't get member!")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -50,7 +190,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(!main.moderatorManager.isModerator(event.member!!.roles)) {
                     val embed = EmbedBuilder()
                         .setDescription(config.getString("noPermissionMessage"))
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -60,7 +200,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(args.isEmpty()) {
                     val embed = EmbedBuilder()
                         .setDescription("No arguemnts given. Usage: ${prefix}addmoney <amount> <user>")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -72,7 +212,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(amount == null) {
                     val embed = EmbedBuilder()
                         .setDescription("Amount not given! Usage: ${prefix}addmoney **<amount>** <user>")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -82,7 +222,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(event.message.contentRaw.length < command.length + prefix.length + args[0].length + 2) {
                     val embed = EmbedBuilder()
                         .setDescription("Missing user parameter! Usage: ${prefix}addmoney <amount> **<user>**")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -92,12 +232,15 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 val uuidOrUsername = event.message.contentRaw.substring(command.length + prefix.length + args[0].length + 2)
 
                 fun sendMsg(removed: Double, username: String) {
-                    val embed = EmbedBuilder()
-                        .setDescription("Added ${if(config.getBoolean("CurrencyLeftSide")) "${config.getString("Currency")}$removed" else "$removed${config.getString("Currency")}"} to $username's balance")
-                        .setColor(Color(0xe0c308))
-                        .build()
+                    val formatter = DecimalFormat("#,###.##")
 
-                    event.channel.sendMessage(embed).queue()
+                    val embed = getEmbedFromYml(config, "addmoneyCommandEmbed",{
+                        it
+                            .replace("{moneyAmount}", formatMoney(removed, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                            .replace("{username}", username)
+                    })
+
+                    event.channel.sendMessage(embed.build()).queue()
                 }
 
                 val uuid = UUIDUtils.getUUIDFromString(uuidOrUsername)
@@ -111,7 +254,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(uuid2 == null) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found or has not played before!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -123,7 +266,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!offlinePlayer.hasPlayedBefore()) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -133,7 +276,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(offlinePlayer)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -147,7 +290,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(player)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -167,7 +310,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!offlinePlayer.hasPlayedBefore()) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -177,7 +320,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(offlinePlayer)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -191,7 +334,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(player)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -208,7 +351,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(event.member == null) {
                     val embed = EmbedBuilder()
                         .setDescription("Couldn't get member!")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -217,7 +360,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(!main.moderatorManager.isModerator(event.member!!.roles)) {
                     val embed = EmbedBuilder()
                         .setDescription(config.getString("noPermissionMessage"))
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -227,7 +370,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(args.isEmpty()) {
                     val embed = EmbedBuilder()
                         .setDescription("No arguemnts given. Usage: ${prefix}removemoney <amount> <user>")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -239,7 +382,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(amount == null) {
                     val embed = EmbedBuilder()
                         .setDescription("Amount not given! Usage: ${prefix}removemoney **<amount>** <user>")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -249,7 +392,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(event.message.contentRaw.length < command.length + prefix.length + args[0].length + 2) {
                     val embed = EmbedBuilder()
                         .setDescription("Missing user parameter! Usage: ${prefix}addmoney <amount> **<user>**")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -259,12 +402,15 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 val uuidOrUsername = event.message.contentRaw.substring(command.length + prefix.length + args[0].length + 2)
 
                 fun sendMsg(removed: Double, username: String) {
-                    val embed = EmbedBuilder()
-                        .setDescription("Removed ${if(config.getBoolean("CurrencyLeftSide")) "${config.getString("Currency")}$removed" else "$removed${config.getString("Currency")}"} from $username's balance")
-                        .setColor(Color(0xe0c308))
-                        .build()
+                    val formatter = DecimalFormat("#,###.##")
 
-                    event.channel.sendMessage(embed).queue()
+                    val embed = getEmbedFromYml(config, "removemoneyCommandEmbed", {
+                        it
+                            .replace("{moneyAmount}", formatMoney(removed, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                            .replace("{username}", username)
+                    })
+                            
+                    event.channel.sendMessage(embed.build()).queue()
                 }
 
                 val uuid = UUIDUtils.getUUIDFromString(uuidOrUsername)
@@ -278,7 +424,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(uuid2 == null) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found or has not played before!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -290,7 +436,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!offlinePlayer.hasPlayedBefore()) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -300,7 +446,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(offlinePlayer)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -314,7 +460,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(player)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -334,7 +480,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!offlinePlayer.hasPlayedBefore()) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -344,7 +490,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(offlinePlayer)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -358,7 +504,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(player)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -375,7 +521,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 if(args.isEmpty()) {
                     val embed = EmbedBuilder()
                         .setDescription("No username or uuid given to search for!")
-                        .setColor(Color(0xb72d0e))
+                        .setColor(Color(failColor))
                         .build()
 
                     event.channel.sendMessage(embed).queue()
@@ -383,15 +529,24 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 }
                 val usernameOrUUID = event.message.contentRaw.substring(command.length + prefix.length + 1)
 
-                fun sendMsg(username: String, balance: Number, online: Boolean) {
-                    val embed = EmbedBuilder()
-                        .addField("Username", username, true)
-                        .addField("Status", if(online) "Online" else "Offline", true)
-                        .addField("Balance", if(config.getBoolean("CurrencyLeftSide")) "${config.getString("Currency")}$balance" else "$balance${config.getString("Currency")}", true)
-                        .setColor(Color(if(online) 0x26b207 else 0xb72d0e ))
-                        .build()
+                fun sendMsg(username: String, balance: Double, online: Boolean) {
+                    val formatter = DecimalFormat("#,###.##")
 
-                    event.channel.sendMessage(embed).queue()
+                    val embed = getEmbedFromYml(config, "balanceCommandEmbed", { text ->
+                        text
+                            .replace("{username}", username)
+                            .replace("{PlayerStatus}", if(online) "Online" else "Offline")
+                            .replace("{playerStatus}", if(online) "online" else "offline")
+                            .replace("{moneyAmount}", formatMoney(balance, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    }, { text ->
+                        if(text.startsWith("ifOnline")) {
+                            if(online)
+                                text.substring(9, text.lastIndexOf(":"))
+                            else text.substring(text.lastIndexOf(":") + 1)
+                        } else throw Error("Invalid custom script")
+                    })
+
+                    event.channel.sendMessage(embed.build()).queue()
                 }
 
                 val uuid = UUIDUtils.getUUIDFromString(usernameOrUUID)
@@ -404,7 +559,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!offlinePlayer.hasPlayedBefore()) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -413,7 +568,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(offlinePlayer)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -424,7 +579,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(player)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -440,7 +595,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(uuid2 == null) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found or has not played before!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -450,7 +605,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!offlinePlayer.hasPlayedBefore()) {
                             val embed = EmbedBuilder()
                                 .setDescription("Player not found!")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -459,7 +614,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(offlinePlayer)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -470,7 +625,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         if(!main.getEconomy().hasAccount(player)) {
                             val embed = EmbedBuilder()
                                 .setDescription("This player does not have an account")
-                                .setColor(Color(0xb72d0e))
+                                .setColor(Color(failColor))
                                 .build()
 
                             event.channel.sendMessage(embed).queue()
@@ -480,6 +635,73 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                     }
                 }
             }
+            "leaderboard", "top", "lb"-> {
+                if(main.server.offlinePlayers.isEmpty()) {
+                    val embed = EmbedBuilder()
+                        .setDescription("There players to show on leaderboard!")
+                        .setColor(Color(failColor))
+                        .build()
+
+                    event.channel.sendMessage(embed).queue()
+                    return
+                }
+
+                val formatter = DecimalFormat("#,###.##")
+                val currency = config.getString("Currency")
+                val leftSided = config.getBoolean("CurrencyLeftSide")
+
+                val players = main.server.offlinePlayers.filter { main.getEconomy().hasAccount(it) }.map { User(it.name, formatMoney(main.getEconomy().getBalance(it), currency, leftSided, formatter)) }.sortedByDescending { it.money }
+
+                val embed = EmbedBuilder()
+                    .setColor(Color.decode(config.getString("leaderboardCommandEmbed.color")) ?: Color(0x2162cc))
+
+                val embedNameTemplate = if(config.isString("leaderboardCommandEmbed.fieldRepeatName")) config.getString("leaderboardCommandEmbed.fieldRepeatName") else null
+                val embedValueTemplate = if(config.isString("leaderboardCommandEmbed.fieldRepeatValue")) config.getString("leaderboardCommandEmbed.fieldRepeatValue") else null
+                val inline = if(config.isBoolean("leaderboardCommandEmbed.fieldRepeatInline")) config.getBoolean("leaderboardCommandEmbed.fieldRepeatInline") else false
+
+                val embedCanBeSet = embedNameTemplate != null && embedValueTemplate != null
+
+                val descCanBeSet = config.isString("leaderboardCommandEmbed.descriptionRepeat")
+
+                if(!embedCanBeSet && !descCanBeSet) {
+                    event.channel.sendMessage("Invalid yaml configuration. Either description or embed field must be set!")
+                    return
+                }
+
+
+                players.forEachIndexed { index, player ->
+                    if(descCanBeSet)
+                    {
+                        embed.setDescription(
+                            config.getString("leaderboardCommandEmbed.descriptionRepeat")
+                                .replace("{username}", player.username)
+                                .replace("{balance}", player.money)
+                                .replace("{index}", (index+1).toString())
+                        )
+                    }
+
+                    if(embedCanBeSet) {
+                        embed.addField(
+                            embedNameTemplate!!
+                                .replace("{username}", player.username)
+                                .replace("{balance}", player.money)
+                                .replace("{index}", (index+1).toString()),
+                            embedValueTemplate!!
+                                .replace("{username}", player.username)
+                                .replace("{balance}", player.money)
+                                .replace("{index}", (index+1).toString()),
+                            inline
+                        )
+                    }
+                }
+
+                event.channel.sendMessage(embed.build()).queue()
+            }
         }
     }
 }
+
+class User (
+    val username: String,
+    val money: String
+)

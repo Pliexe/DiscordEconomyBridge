@@ -30,3 +30,129 @@ discordModerators:
 
 # Discord no permission message
 noPermissionMessage: "You don't have permission to run that command!"
+
+## Command customizations
+
+# Disabled commands
+#disabledCommands:
+#  - help
+
+##############################
+### Commands customization ###
+##############################
+
+# Color of embed when command fails
+onFailEmbedColor: 0xb72d0e
+
+# help command embed
+helpCommandEmbed:
+  title: "These are the available commands"
+  color: "#0048ad"
+  fields:
+    "{prefix}balance":
+      text:
+        - "See a pleyer's current balance"
+        - "Usage: {prefix}balance <username or uuid"
+        - "Alias: {prefix}bal"
+      inline: false
+    "{prefix}addmoney":
+      text:
+        - "Add money to a player"
+        - "Usage: {prefix}addmoney <amount> <username or uuid>"
+      inline: false
+    "{prefix}removemoney":
+      text:
+        - "Remove money from a player"
+        - "Usage: {prefix}removemoney <amount> <username or uuid>\nAlias: {prefix}remmoney"
+      inline: false
+    "{prefix}leaderboard":
+      text:
+        - "Shows the current leaderboard"
+        - "Usage: {prefix}leaderboard"
+        - "Alias: {prefix}top, {prefix}lb"
+      inline: false
+
+# addmoney command embed
+addmoneyCommandEmbed:
+  description: "Added {moneyAmount} to {username}'s balance"
+  color: 0xe0c308
+
+# removemoney command embed
+removemoneyCommandEmbed:
+  description: "Removed {moneyAmount} from {username}'s balance"
+  color: 0xe0c308
+
+# balance command embed
+balanceCommandEmbed:
+  color: "$ifOnline:0x26b207:0xb72d0e"
+  fields:
+    "Username":
+      text: "{username}"
+      inline: true
+    "Status":
+      # Use playerStatus for lowercase outcome
+      text: "{PlayerStatus}"
+      inline: true
+    "Balance":
+      text: "{moneyAmount}"
+      inline: true
+
+# leaderboard command embed
+# note that this only accepts descriptionRepeat or fieldRepeat
+leaderboardCommandEmbed:
+  color: 0x2162cc
+  descriptionRepeat: "{index}# {username} - {balance}"
+#  fieldRepeatName: "{username}"
+#  fieldRepeatValue: "{balance}"
+#  fieldRepeatInline: false
+
+
+#######################
+### Custom commands ###
+#######################
+
+##############################
+### Available placeholders ###
+###
+### {messageContent} - The whole message's content
+### {messageContentWithoutCommand} - The message's content without the command part
+### {username} - Player's username
+### {PlayerStatus} - Tell if the player is online. Example: Player is Online
+### {playerStatus} - Tell if the player is online. Example: Player is online
+### {joinDate} - Player's join date
+###
+###                        ###
+##############################
+
+
+customCommands:
+#  say:
+#    content: "{messageContentWithoutCommand}"
+  info:
+    inputs:
+      - "OnlinePlayer"
+    aliases:
+      - user
+    embed:
+      color: 0x3242a8
+#      author:
+#        name: "John"
+#        icon_url: "https://yes"
+#        url: "https://visitme:
+#      image: "https://yes"
+#      thumnail: "https://yes"
+#      icon_url: "https://yes"
+#      title: "Title of this embed"
+#      footer:
+#        text: "A footer example"
+#        icon_url: "any icon url can be placed here"
+      fields:
+        "Username":
+          text: "{username}"
+          inline: true
+        "Status":
+          text: "{PlayerStatus}"
+          inline: true
+        "Join date":
+          text: "{joinDate}"
+          inline: true
