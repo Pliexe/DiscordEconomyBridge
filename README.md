@@ -1,4 +1,4 @@
-# THIS README IS OUTDATE, PLEASE USE THE DOCUMENT ON https://www.spigotmc.org/resources/discord-economy-bridge-1-7-1-16.90290/
+# THIS README IS OUTDATED, PLEASE USE THE DOCUMENT ON https://www.spigotmc.org/resources/discord-economy-bridge-1-7-1-16.90290/
 
 # DiscordEconomyBridge
 
