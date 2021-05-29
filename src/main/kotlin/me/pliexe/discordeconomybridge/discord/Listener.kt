@@ -152,7 +152,6 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                             .replace("{messageContent}", event.message.contentRaw)
                             .replace("{messageContentWithoutCommand}", event.message.contentRaw.substring(prefix.length+command.length+1))
 
-                        Bukkit.getServer().logger.info("PLAYER IS NULL: ${player == null}")
                         if(player != null) {
                             text
                                 .replace("{username}", player!!.name)

@@ -12,12 +12,9 @@ fun getEmbedFromYml (config: FileConfiguration, path: String, filter: (text: Str
 
     if(config.isString("$path.title")) embed.setTitle(filter(config.getString("$path.title")))
 
-    Bukkit.getServer().logger.info("IS CONFIG FIELDS: ${config.isConfigurationSection("$path.fields")}")
     if(config.isConfigurationSection("$path.fields"))
     {
         val embedsFields = config.getConfigurationSection("$path.fields").getKeys(false)
-
-        Bukkit.getServer().logger.info("FIELDS: ${config.isConfigurationSection("$path.fields")}")
 
         embedsFields.forEach { fieldName ->
             if(config.isSet("$path.fields.$fieldName.text")) {

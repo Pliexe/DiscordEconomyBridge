@@ -21,7 +21,7 @@ class UsersManager(private val main: DiscordEconomyBridge) {
     fun GetPlayerUUID(username: String): UUID? {
         try {
             for(user in users) {
-                if(user.value == username) {
+                if(user.value.equals(username, ignoreCase = true)) {
                     return UUID.fromString(user.key)
                 }
             }
