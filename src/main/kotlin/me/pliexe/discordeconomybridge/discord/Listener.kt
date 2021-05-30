@@ -13,6 +13,7 @@ import java.awt.Color
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 class Listener(private  val main: DiscordEconomyBridge,private val server: Server, private val config: FileConfiguration) : ListenerAdapter() {
@@ -667,16 +668,18 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                     return
                 }
 
+                var text: MutableList<String>? = null
 
                 players.forEachIndexed { index, player ->
                     if(descCanBeSet)
                     {
-                        embed.setDescription(
-                            config.getString("leaderboardCommandEmbed.descriptionRepeat")
-                                .replace("{username}", player.username)
-                                .replace("{balance}", player.money)
-                                .replace("{index}", (index+1).toString())
-                        )
+                        if(text == null)
+                            text = ArrayList()
+
+                        text?.add(config.getString("leaderboardCommandEmbed.descriptionRepeat")
+                            .replace("{username}", player.username)
+                            .replace("{balance}", player.money)
+                            .replace("{index}", (index+1).toString()))
                     }
 
                     if(embedCanBeSet) {
@@ -693,6 +696,8 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                         )
                     }
                 }
+
+                if(!text.isNullOrEmpty()) embed.setDescription(text!!.joinToString("\n"))
 
                 event.channel.sendMessage(embed.build()).queue()
             }
