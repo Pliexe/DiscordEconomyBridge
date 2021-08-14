@@ -24,6 +24,9 @@ PREFIX: "!"
 Currency: "$"
 CurrencyLeftSide: false
 
+# Ignore permission check for discord administrator permission
+ignorePermissionsForAdministrators: false
+
 discordModerators:
 #  - "477622334182785025"
 #  - ROLEID2
