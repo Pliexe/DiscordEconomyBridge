@@ -24,7 +24,7 @@ class ModeratorManager(private val main: DiscordEconomyBridge) {
 
     }
 
-    fun isModerator(member: Member,_roles: List<Role>): Boolean
+    fun isModerator(member: Member): Boolean
     {
         if(member.isOwner) return true
 
@@ -32,7 +32,7 @@ class ModeratorManager(private val main: DiscordEconomyBridge) {
             if(main.config.getBoolean("ignorePermissionsForAdministrators"))
                 if(member.hasPermission(Permission.ADMINISTRATOR)) return true
 
-        for(role in _roles) {
+        for(role in member.roles) {
             if(roles.contains(role.id)) {
                 return true
             }

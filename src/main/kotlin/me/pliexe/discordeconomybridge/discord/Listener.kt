@@ -64,7 +64,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
 
                 if(config.isBoolean("$path.adminCommand"))
                     if(config.getBoolean("$path.adminCommand"))
-                        if(!main.moderatorManager.isModerator(event.member!!.roles)) {
+                        if(!main.moderatorManager.isModerator(event.member!!)) {
                             val embed = EmbedBuilder()
                                 .setDescription(config.getString("noPermissionMessage"))
                                 .setColor(Color(failColor))
@@ -187,7 +187,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                     event.channel.sendMessage(embed).queue()
                     return
                 }
-                if(!main.moderatorManager.isModerator(event.member!!.roles)) {
+                if(!main.moderatorManager.isModerator(event.member!!)) {
                     val embed = EmbedBuilder()
                         .setDescription(config.getString("noPermissionMessage"))
                         .setColor(Color(failColor))
@@ -357,7 +357,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                     event.channel.sendMessage(embed).queue()
                     return
                 }
-                if(!main.moderatorManager.isModerator(event.member!!.roles)) {
+                if(!main.moderatorManager.isModerator(event.member!!)) {
                     val embed = EmbedBuilder()
                         .setDescription(config.getString("noPermissionMessage"))
                         .setColor(Color(failColor))
