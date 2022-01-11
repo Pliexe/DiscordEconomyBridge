@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.pliexe.discordeconomybridge"
-version = "1.3"
+version = "1.4"
 
 repositories {
     mavenCentral()
@@ -19,7 +19,7 @@ dependencies {
     testImplementation(kotlin("test-junit"))
     compileOnly("org.spigotmc:spigot:1.8-R0.1-SNAPSHOT")
     compileOnly(fileTree("libs"))
-    api("ch.qos.logback:logback-classic:1.2.3")
+    api("ch.qos.logback:logback-classic:1.2.10")
 //    compileOnly("com.github.MilkBowl:VaultAPI:1.7")
     api ("net.dv8tion:JDA:4.2.0_168") {
         exclude("opus-java")

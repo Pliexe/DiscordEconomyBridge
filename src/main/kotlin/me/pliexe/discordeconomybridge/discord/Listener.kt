@@ -5,7 +5,6 @@ import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.events.ReadyEvent
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
 import net.dv8tion.jda.api.hooks.ListenerAdapter
-import org.bukkit.Bukkit
 import org.bukkit.Server
 import org.bukkit.configuration.file.FileConfiguration
 import org.bukkit.entity.Player
@@ -650,7 +649,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 val currency = config.getString("Currency")
                 val leftSided = config.getBoolean("CurrencyLeftSide")
 
-                val players = main.server.offlinePlayers.filter { main.getEconomy().hasAccount(it) }.map { User(it.name, formatMoney(main.getEconomy().getBalance(it), currency, leftSided, formatter)) }.sortedByDescending { it.money }
+                val players = main.server.offlinePlayers.filter { main.getEconomy().hasAccount(it) }.map { User(it.name, main.getEconomy().getBalance(it)) }.sortedByDescending { it.money }
 
                 val embed = EmbedBuilder()
                     .setColor(Color.decode(config.getString("leaderboardCommandEmbed.color")) ?: Color(0x2162cc))
@@ -670,34 +669,41 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
 
                 var text: MutableList<String>? = null
 
-                players.forEachIndexed { index, player ->
+                var leaderboardLimit = if (config.isInt("leaderboardSlots")) config.getInt("leaderboardSlots") else 10
+
+                if(leaderboardLimit > players.size) leaderboardLimit = players.size
+
+                for(index in 0 until leaderboardLimit)
+                {
+                    val formattedMoney = formatMoney(players[index].money, currency, leftSided, formatter)
+
                     if(descCanBeSet)
                     {
                         if(text == null)
                             text = ArrayList()
 
-                        text?.add(config.getString("leaderboardCommandEmbed.descriptionRepeat")
-                            .replace("{username}", player.username)
-                            .replace("{balance}", player.money)
+                        text.add(config.getString("leaderboardCommandEmbed.descriptionRepeat")
+                            .replace("{username}", players[index].username)
+                            .replace("{balance}", formattedMoney)
                             .replace("{index}", (index+1).toString()))
                     }
 
                     if(embedCanBeSet) {
                         embed.addField(
                             embedNameTemplate!!
-                                .replace("{username}", player.username)
-                                .replace("{balance}", player.money)
+                                .replace("{username}", players[index].username)
+                                .replace("{balance}", formattedMoney)
                                 .replace("{index}", (index+1).toString()),
                             embedValueTemplate!!
-                                .replace("{username}", player.username)
-                                .replace("{balance}", player.money)
+                                .replace("{username}", players[index].username)
+                                .replace("{balance}", formattedMoney)
                                 .replace("{index}", (index+1).toString()),
                             inline
                         )
                     }
                 }
 
-                if(!text.isNullOrEmpty()) embed.setDescription(text!!.joinToString("\n"))
+                if(!text.isNullOrEmpty()) embed.setDescription(text.joinToString("\n"))
 
                 event.channel.sendMessage(embed.build()).queue()
             }
@@ -707,5 +713,5 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
 
 class User (
     val username: String,
-    val money: String
+    val money: Double
 )

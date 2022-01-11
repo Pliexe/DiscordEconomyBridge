@@ -24,6 +24,9 @@ PREFIX: "!"
 Currency: "$"
 CurrencyLeftSide: false
 
+# Max users to show in leaderboard
+leaderboardSlots: 10
+
 # Ignore permission check for discord administrator permission
 ignorePermissionsForAdministrators: false
 
