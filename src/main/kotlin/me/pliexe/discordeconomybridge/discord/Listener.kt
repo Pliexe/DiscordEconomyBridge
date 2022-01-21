@@ -674,7 +674,7 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
 
                 if(leaderboardLimit > players.size) leaderboardLimit = players.size
 
-                val embed = getEmbedFromYml(config, "leaderboardCommandEmbed", { text2 -> text2 }, null, true)
+                val embed = getEmbedFromYml(config, "leaderboardCommandEmbed", { text2 -> text2 }, null, !descCanBeSet)
 
                 for(index in 0 until leaderboardLimit)
                 {
