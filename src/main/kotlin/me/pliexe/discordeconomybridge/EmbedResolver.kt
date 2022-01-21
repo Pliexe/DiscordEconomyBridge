@@ -1,11 +1,10 @@
 package me.pliexe.discordeconomybridge
 
 import net.dv8tion.jda.api.EmbedBuilder
-import org.bukkit.Bukkit
 import org.bukkit.configuration.file.FileConfiguration
 import java.awt.Color
 
-fun getEmbedFromYml (config: FileConfiguration, path: String, filter: (text: String) -> String, resolveScript: ((text: String) -> String)? = null): EmbedBuilder {
+fun getEmbedFromYml (config: FileConfiguration, path: String, filter: (text: String) -> String, resolveScript: ((text: String) -> String)? = null, ingoreDescription: Boolean = false): EmbedBuilder {
     val embed = EmbedBuilder()
 
     if(!config.isConfigurationSection(path)) throw Error("missing configuration in yaml: $path")
@@ -38,8 +37,8 @@ fun getEmbedFromYml (config: FileConfiguration, path: String, filter: (text: Str
             embed.setColor(Color.decode(value))
     }
 
-    if(config.isString("$path.description")) embed.setDescription(filter(config.getString("$path.description")))
-    else if(config.isList("$path.description")) embed.setDescription(config.getStringList("$path.description").joinToString("\n") { filter(it) })
+    if(!ingoreDescription && config.isString("$path.description")) embed.setDescription(filter(config.getString("$path.description")))
+    else if(!ingoreDescription && config.isList("$path.description")) embed.setDescription(config.getStringList("$path.description").joinToString("\n") { filter(it) })
 
     if(config.isString("$path.footer.text")) {
         if(config.isString("$path.footer.icon_url")) embed.setFooter(filter(config.getString("$path.footer.text")), config.getString("$path.footer.icon_url"))

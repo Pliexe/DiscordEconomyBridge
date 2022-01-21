@@ -651,8 +651,9 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
 
                 val players = main.server.offlinePlayers.filter { main.getEconomy().hasAccount(it) }.map { User(it.name, main.getEconomy().getBalance(it)) }.sortedByDescending { it.money }
 
-                val embed = EmbedBuilder()
-                    .setColor(Color.decode(config.getString("leaderboardCommandEmbed.color")) ?: Color(0x2162cc))
+
+
+//                getEmbedFromYml(config, "leaderboardCommandEmbed", text -> "hi", )
 
                 val embedNameTemplate = if(config.isString("leaderboardCommandEmbed.fieldRepeatName")) config.getString("leaderboardCommandEmbed.fieldRepeatName") else null
                 val embedValueTemplate = if(config.isString("leaderboardCommandEmbed.fieldRepeatValue")) config.getString("leaderboardCommandEmbed.fieldRepeatValue") else null
@@ -672,6 +673,8 @@ class Listener(private  val main: DiscordEconomyBridge,private val server: Serve
                 var leaderboardLimit = if (config.isInt("leaderboardSlots")) config.getInt("leaderboardSlots") else 10
 
                 if(leaderboardLimit > players.size) leaderboardLimit = players.size
+
+                val embed = getEmbedFromYml(config, "leaderboardCommandEmbed", { text2 -> text2 }, null, true)
 
                 for(index in 0 until leaderboardLimit)
                 {
