@@ -14,10 +14,10 @@ class DiscordEconomyBridge : JavaPlugin() {
 
     private var jda: JDA? = null
     private var econ: Economy? = null
-    val usersManager: UsersManager = UsersManager(this)
+    val usersManager: UsersManager = UsersManager()
     val moderatorManager = ModeratorManager(this)
 
-    fun getJda(): JDA { return jda!! }
+    /*fun getJda(): JDA { return jda!! }*/
     fun getEconomy(): Economy { return econ!! }
 
     private fun setupEconomy(): Boolean {

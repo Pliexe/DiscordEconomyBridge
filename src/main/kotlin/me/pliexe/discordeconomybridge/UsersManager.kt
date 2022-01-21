@@ -3,12 +3,12 @@ package me.pliexe.discordeconomybridge
 import me.pliexe.discordeconomybridge.files.DataConfig
 import java.util.*
 
-class UsersManager(private val main: DiscordEconomyBridge) {
+class UsersManager() {
     private val users = hashMapOf<String, String>()
 
     fun LoadFromConfig() {
         if(DataConfig.get().contains("users")) {
-            val users = DataConfig.get().getConfigurationSection("users").getKeys(false).forEach {
+            DataConfig.get().getConfigurationSection("users").getKeys(false).forEach {
                 if(DataConfig.get().contains("users.$it")) {
                     if(UUIDUtils.isValidUUID(it)) {
                         users[it] = DataConfig.get().getString("users.$it")
@@ -31,13 +31,13 @@ class UsersManager(private val main: DiscordEconomyBridge) {
         }
     }
 
-    fun GetPlayerUsername(uuid: UUID): String? {
+    /*fun GetPlayerUsername(uuid: UUID): String? {
         return users[uuid.toString()]
     }
 
     fun GetPlayerUsername(uuid: String): String? {
         return users[uuid]
-    }
+    }*/
 
     fun SavePlayer(username: String, uuid: UUID) {
         users[uuid.toString()] = username
