@@ -1,0 +1,111 @@
+###################################
+## Discord Message Configuration ##
+###################################
+
+# Inbuilt Placeholders
+# %player_name% = minecraft player username
+# %player_uuid% = minecraft player uuid
+# %discord_user_username% = Discord username
+# %discord_user_avatar_url% = Discord avatar url
+# %discord_user_nickname% = Discord user nickname
+# %discord_command_name% = Name of the command
+# %discord_command_prefix% = Prefix of the command
+# %discord_command_usage% = Usage of the command
+
+# Per command special placeholders are stored as {placeholder}
+
+# Discord no permission message
+noPermissionMessage:
+  description: "You don't have permission to run that command!"
+  color: 0xb72d0e
+
+# Supported placeholders:
+# {prefix}
+# {message}
+# {commandName}
+
+failMessage:
+  description: "❌ {message}"
+  fields:
+    Usage:
+      text: "%discord_command_prefix%%discord_command_name% %discord_command_usage%"
+  color: 0xb72d0e
+
+##########################
+# addmoney command embed #
+##########################
+# The amount of money increased {amount_increase}
+
+addmoneyCommandEmbed:
+  description: "Added {amount_increase} to %player_name%'s balance"
+  color: 0xe0c308
+
+#############################
+# removemoney command embed #
+#############################
+
+removemoneyCommandEmbed:
+  description: "Removed {amount_decrease} from %player_name%'s balance"
+  color: 0xe0c308
+
+#########################
+# balance command embed #
+# %custom_vault_eco_balance% custom one for balance but you can use the placeholder one
+#########################
+
+balanceCommandEmbed:
+  color: "$ifOnline:0x26b207:0xb72d0e"
+  fields:
+    "Username":
+      text: "%player_name%"
+      inline: true
+    "Status":
+      # Use playerStatus for lowercase outcome
+      text: "%player_online%"
+      inline: true
+    "Balance":
+      text: "%custom_vault_eco_balance%"
+      inline: true
+
+######################
+# help command embed #
+######################
+
+helpCommandEmbed:
+  title: "These are the available commands"
+  color: "#0048ad"
+  fields:
+    "{prefix}balance":
+      text:
+        - "See a pleyer's current balance"
+        - "Usage: %discord_command_prefix%balance <username or uuid"
+        - "Alias: %discord_command_prefix%bal"
+      inline: false
+    "{prefix}addmoney":
+      text:
+        - "Add money to a player"
+        - "Usage: %discord_command_prefix%addmoney <amount> <username or uuid>"
+      inline: false
+    "{prefix}removemoney":
+      text:
+        - "Remove money from a player"
+        - "Usage: %discord_command_prefix%removemoney <amount> <username or uuid>\nAlias: %discord_command_prefix%remmoney"
+      inline: false
+    "{prefix}leaderboard":
+      text:
+        - "Shows the current leaderboard"
+        - "Usage: %discord_command_prefix%leaderboard"
+        - "Alias: %discord_command_prefix%top, %discord_command_prefix%lb"
+      inline: false
+
+#############################
+# leaderboard command embed #
+#############################
+# note that this only accepts descriptionRepeat or fieldRepeat
+
+leaderboardCommandEmbed:
+  color: 0x2162cc
+  descriptionRepeat: "{index}# %player_name% - %custom_vault_eco_balance%"
+#  fieldRepeatName: "%player_name%"
+#  fieldRepeatValue: "%custom_vault_eco_balance%"
+#  fieldRepeatInline: false

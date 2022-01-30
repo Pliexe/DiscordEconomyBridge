@@ -9,6 +9,9 @@
 # DO NOT SHARE THE BOT TOKEN WITH ANYONE!
 TOKEN: BOT_TOKEN
 
+# Independent usage of plugin alongside with DiscordSRV
+independent: false
+
 # Status
 # Type of status, can be: (Playing, playing), (Watching, watching), (Listening, listening), (Streaming, streaming)
 # You can remove statusType and statusMessage if you want!
@@ -37,7 +40,22 @@ discordModerators:
 # Discord no permission message
 noPermissionMessage: "You don't have permission to run that command!"
 
+## Aliases
+
+aliases:
+  leaderboard:
+    - lb
+    - top
+  balance:
+    - bal
+  removemoney:
+    - remmoney
+    - remoney
+
+
+
 ## Command customizations
+
 
 # Disabled commands
 #disabledCommands:
@@ -47,71 +65,7 @@ noPermissionMessage: "You don't have permission to run that command!"
 ### Commands customization ###
 ##############################
 
-# Color of embed when command fails
-onFailEmbedColor: 0xb72d0e
-
-# help command embed
-helpCommandEmbed:
-  title: "These are the available commands"
-  color: "#0048ad"
-  fields:
-    "{prefix}balance":
-      text:
-        - "See a pleyer's current balance"
-        - "Usage: {prefix}balance <username or uuid"
-        - "Alias: {prefix}bal"
-      inline: false
-    "{prefix}addmoney":
-      text:
-        - "Add money to a player"
-        - "Usage: {prefix}addmoney <amount> <username or uuid>"
-      inline: false
-    "{prefix}removemoney":
-      text:
-        - "Remove money from a player"
-        - "Usage: {prefix}removemoney <amount> <username or uuid>\nAlias: {prefix}remmoney"
-      inline: false
-    "{prefix}leaderboard":
-      text:
-        - "Shows the current leaderboard"
-        - "Usage: {prefix}leaderboard"
-        - "Alias: {prefix}top, {prefix}lb"
-      inline: false
-
-# addmoney command embed
-addmoneyCommandEmbed:
-  description: "Added {moneyAmount} to {username}'s balance"
-  color: 0xe0c308
-
-# removemoney command embed
-removemoneyCommandEmbed:
-  description: "Removed {moneyAmount} from {username}'s balance"
-  color: 0xe0c308
-
-# balance command embed
-balanceCommandEmbed:
-  color: "$ifOnline:0x26b207:0xb72d0e"
-  fields:
-    "Username":
-      text: "{username}"
-      inline: true
-    "Status":
-      # Use playerStatus for lowercase outcome
-      text: "{PlayerStatus}"
-      inline: true
-    "Balance":
-      text: "{moneyAmount}"
-      inline: true
-
-# leaderboard command embed
-# note that this only accepts descriptionRepeat or fieldRepeat
-leaderboardCommandEmbed:
-  color: 0x2162cc
-  descriptionRepeat: "{index}# {username} - {balance}"
-#  fieldRepeatName: "{username}"
-#  fieldRepeatValue: "{balance}"
-#  fieldRepeatInline: false
-
+# Command customization has been moved to discord_messages.yml
 
 #######################
 ### Custom commands ###

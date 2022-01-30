@@ -1,6 +1,6 @@
 package me.pliexe.discordeconomybridge
 
-import me.pliexe.discordeconomybridge.files.DataConfig
+import me.pliexe.discordeconomybridge.filemanager.DataConfig
 import java.util.*
 
 class UsersManager() {

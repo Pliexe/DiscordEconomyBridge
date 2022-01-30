@@ -6,6 +6,7 @@ load: POSTWORLD
 author: pliexe
 
 depend: [Vault]
+softdepend: [PlaceholderAPI, DiscordSRV]
 
 loadbefore: [floodgate-bukkit]
 
