@@ -6,6 +6,8 @@
 # %player_name% = minecraft player username
 # %player_uuid% = minecraft player uuid
 # %discord_user_username% = Discord username
+# %discord_user_discriminator% = Discriminator of user
+# %discord_user_tag% = Tag of user
 # %discord_user_avatar_url% = Discord avatar url
 # %discord_user_nickname% = Discord user nickname
 # %discord_command_name% = Name of the command
@@ -25,7 +27,7 @@ noPermissionMessage:
 # {commandName}
 
 failMessage:
-  description: "❌ {message}"
+  description: ":x: {message}"
   fields:
     Usage:
       text: "%discord_command_prefix%%discord_command_name% %discord_command_usage%"
@@ -54,7 +56,7 @@ removemoneyCommandEmbed:
 #########################
 
 balanceCommandEmbed:
-  color: "$ifOnline:0x26b207:0xb72d0e"
+  color: "ifOnline ? 0x26b207 : 0xb72d0e"
   fields:
     "Username":
       text: "%player_name%"
@@ -109,3 +111,138 @@ leaderboardCommandEmbed:
 #  fieldRepeatName: "%player_name%"
 #  fieldRepeatValue: "%custom_vault_eco_balance%"
 #  fieldRepeatInline: false
+
+##########################
+# coinflip command embed #
+##########################
+
+coinflipCommandEmbed:
+  color: "#4287f5"
+  description: "**%discord_user_username%** has won the coinflip. The coin landed on `{land_side}`!"
+  fields:
+    "Amount wagered":
+      text: "{amount_wagered}"
+
+###########################
+# blackjack command embed #
+###########################
+
+blackjackCommandShowEmbed:
+  color: 0xff9100
+  fields:
+    "Dealer's hand":
+      text: ":flower_playing_cards: {enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true
+  footer:
+    text: "If you don't anwser in 5 minutes it will automatically pick stand!"
+
+# {won_amount} = The amount the user has won
+
+## Blackjack outcome
+
+# Player wins
+blackjackCommandBlackjackOutcomePlayerEmbed:
+  color: 0x1af025
+  title: "Blackjack! You have won!"
+  description: "Your hand was exactly 21. You win {win_amount}"
+  fields:
+    "Dealer's hand":
+      text: "{enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true
+
+# Dealer wins
+blackjackCommandBlackjackOutcomeDealerEmbed:
+  color: 0xff2600
+  title: "Blackjack! Dealer has won!"
+  description: "The dealer's hand was exactly 21. You lost {lose_amount}"
+  fields:
+    "Dealer's hand":
+      text: "{enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true
+
+## Draw outcome
+# Normal
+blackjackCommandDrawOutcomeEmbed:
+  color: 0xf0e11a
+  title: "Push (Draw)"
+  description: "You and the dealer's hand had the same value of cards"
+  fields:
+    "Dealer's hand":
+      text: "{enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true
+# Blackjack
+blackjackCommandDrawBlackjackOutcomeEmbed:
+  color: 0xf0e11a
+  title: "Push (Draw)"
+  description: "You and the dealer both got blackjack!"
+  fields:
+    "Dealer's hand":
+      text: "{enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true
+
+## Bust outcome
+# Player's hand
+blackjackCommandBustPlayerEmbed:
+  color: 0xff2600
+  title: "You Busted!"
+  description: "Your hand went over 21 `Bust!`. You lost {lose_amount}"
+  fields:
+    "Dealer's hand":
+      text: "{enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true
+# Dealer's hand
+blackjackCommandBustDealerEmbed:
+  color: 0x1af025
+  title: "Dealer Bust!"
+  description: "The dealer's hand went over 21, `Bust!`. You win {win_amount}"
+  fields:
+    "Dealer's hand":
+      text: "{enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true
+
+## Regular outcome
+# Player win
+blackjackCommandPlayerWinEmbed:
+  color: 0x1af025
+  title: "You have won!"
+  description: "The dealer's hand had less value in their cards than your hand. You won {win_amount}"
+  fields:
+    "Dealer's hand":
+      text: "{enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true
+# Dealer win
+blackjackCommandDealerWinEmbed:
+  color: 0xff2600
+  title: "Dealer has won!"
+  description: "The dealer's hand had more value in their cards than your hand. You lost {lose_amount}"
+  fields:
+    "Dealer's hand":
+      text: "{enemy_cards}\nValue: {enemy_cards_value}"
+      inline: true
+    "Your hand":
+      text: "{your_cards}\nValue: {your_cards_value}"
+      inline: true

@@ -30,4 +30,6 @@ class Listener(main: DiscordEconomyBridge, server: Server, config: Config) : Lis
     override fun onGuildMessageReceived(event: GuildMessageReceivedEvent) {
         commandHandler.runCommand(event)
     }
+
+
 }

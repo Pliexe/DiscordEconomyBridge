@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.pliexe.discordeconomybridge"
-version = "1.5"
+version = "2.0"
 
 repositories {
     mavenCentral()
@@ -14,6 +14,7 @@ repositories {
 
 //    maven(url = "https://oss.sonatype.org/content/repositories/snapshots/")
 //    maven(url = "https://jitpack.io")
+    maven(url = "https://repo.mrivanplays.com/repository/other-developers")
     maven(url = "https://nexus.scarsz.me/content/groups/public/")
     maven(url = "https://repo.codemc.org/repository/nms/")
     maven(url = "https://m2.dv8tion.net/releases")
@@ -30,11 +31,6 @@ dependencies {
     compileOnly(fileTree("libs"))
 
     api("ch.qos.logback:logback-classic:1.2.10")
-//    compileOnly("com.github.MilkBowl:VaultAPI:1.7")
-//    api ("net.dv8tion:JDA:4.4.0_350") {
-//        exclude("opus-java")
-//        exclude("commons")
-//    }
 
     implementation("net.dv8tion:JDA:4.4.0_350") {
         exclude("opus-java")

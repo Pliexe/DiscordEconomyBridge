@@ -7,6 +7,10 @@ import net.dv8tion.jda.api.entities.Role
 class ModeratorManager(private val main: DiscordEconomyBridge) {
     private val roles = mutableListOf<String>()
 
+    fun getRoles (): MutableList<String> {
+        return roles
+    }
+
     fun LoadFromConfig() {
         if(main.config.isList("discordModerators")) {
             main.config.getStringList("discordModerators").forEach {
@@ -31,6 +35,23 @@ class ModeratorManager(private val main: DiscordEconomyBridge) {
         if(main.config.isBoolean("ignorePermissionsForAdministrators"))
             if(main.config.getBoolean("ignorePermissionsForAdministrators"))
                 if(member.hasPermission(Permission.ADMINISTRATOR)) return true
+
+        for(role in member.roles) {
+            if(roles.contains(role.id)) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    fun isModerator(member: github.scarsz.discordsrv.dependencies.jda.api.entities.Member): Boolean
+    {
+        if(member.isOwner) return true
+
+        if(main.config.isBoolean("ignorePermissionsForAdministrators"))
+            if(main.config.getBoolean("ignorePermissionsForAdministrators"))
+                if(member.hasPermission(github.scarsz.discordsrv.dependencies.jda.api.Permission.ADMINISTRATOR)) return true
 
         for(role in member.roles) {
             if(roles.contains(role.id)) {

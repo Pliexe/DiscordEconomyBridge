@@ -37,12 +37,24 @@ discordModerators:
 #  - "477622334182785025"
 #  - ROLEID2
 
-# Discord no permission message
-noPermissionMessage: "You don't have permission to run that command!"
+slashCommandServers:
+#  - "477617680631726092"
+
+## DiscordSRV warn
+# If set to true the unsupported commands that only work with DiscordSRV will not reply
+noDiscordSRVwarn: false
+
+# Min_Max wager/bet
+maxBet: 100000000000000000
+minBet: 100
 
 ## Aliases
 
 aliases:
+  blackjack:
+    - bj
+  coinflip:
+    - cf
   leaderboard:
     - lb
     - top

@@ -1,12 +1,10 @@
 package me.pliexe.discordeconomybridge.discord.handlers
 
+import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.ButtonClickEvent
+import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
-import me.pliexe.discordeconomybridge.discord.Command
-import me.pliexe.discordeconomybridge.discord.commands.AddMoney
-import me.pliexe.discordeconomybridge.discord.commands.Balance
-import me.pliexe.discordeconomybridge.discord.commands.Help
-import me.pliexe.discordeconomybridge.discord.commands.RemoveMoney
-import me.pliexe.discordeconomybridge.getEmbedFromYml
+import me.pliexe.discordeconomybridge.discord.*
+import me.pliexe.discordeconomybridge.discord.commands.*
 import me.pliexe.discordeconomybridge.getMultilineableString
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
@@ -39,12 +37,32 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         }
     }
 
+    fun getCommand(name: String): Command? {
+        return commands[name]
+    }
+
+    fun getCommands(): HashMap<String, Command> {
+        return commands
+    }
+
+    fun getEvents(): HashMap<String, (ButtonClickEvent) -> Unit> {
+        return (commands["blackjack"] as Blackjack).buttonEvents
+    }
+
+    fun loadCommand(command: Command)
+    {
+        commands[command.name] = command
+    }
+
     fun loadCommands()
     {
-        commands["help"] = Help(main)
-        commands["addmoney"] = AddMoney(main)
-        commands["removemoney"] = RemoveMoney(main)
-        commands["balance"] = Balance(main)
+        loadCommand(Help(main))
+        loadCommand(AddMoney(main))
+        loadCommand(RemoveMoney(main))
+        loadCommand(Balance(main))
+        loadCommand(Leaderboard(main))
+        loadCommand(Coinflip(main))
+        loadCommand(Blackjack(main))
     }
 
     fun loadAliases()
@@ -103,7 +121,65 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         if(cmd.adminCommand && !main.moderatorManager.isModerator(event.member!!))
             return cmd.noPermission(event)
 
-        commands[command]!!.run(event, command, prefix, args)
+
+        cmd.run(event, command, prefix, args)
+    }
+
+    fun runCommand(event: github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent)
+    {
+        if(event.author.isBot) return
+        val prefix = config.getString("PREFIX")
+        if(!event.message.contentRaw.startsWith(prefix)) return
+
+        val rawArgs = event.message.contentRaw.split(" +".toRegex())
+        val command = rawArgs[0].substring(prefix.length).toLowerCase()
+
+        if(disabledCommands != null)
+            if(disabledCommands.contains(command)) return
+
+        val args = rawArgs.subList(1, rawArgs.size)
+
+        if(customCommands != null)
+        {
+            var cmd: String? = if(customCommands.contains(command)) command else null
+            if(cmd == null) {
+                cmd = customCommandAliases[command]
+            }
+
+            if(cmd != null)
+            {
+                customCommand(event, cmd, prefix, args)
+                return
+            }
+        }
+
+        var cmd = commands[command]
+
+        if(cmd == null)
+        {
+            val alias = commandAliases[command]
+            if(alias.isNullOrEmpty()) return
+            cmd = commands[alias]
+            if(cmd == null) return
+        }
+
+        if(cmd.adminCommand && !main.moderatorManager.isModerator(event.member!!))
+            return cmd.noPermission(event)
+
+        cmd.run(event, command, prefix, args)
+    }
+
+    fun runCommand(event: SlashCommandEvent)
+    {
+        if(disabledCommands != null)
+            if(disabledCommands.contains(event.name)) return
+
+        val cmd = commands[event.name] ?: return
+
+        if(cmd.adminCommand && !main.moderatorManager.isModerator(event.member!!))
+            return cmd.noPermission(event)
+
+        cmd.run(event)
     }
 
     private fun customCommand(event: GuildMessageReceivedEvent, cmd: String, prefix: String, args: List<String>)
@@ -145,9 +221,10 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         }
 
         var player: Player? = null
+        var inputs: List<String>? = null
 
         if(config.isList("$path.inputs")) {
-            val inputs = config.getStringList("$path.inputs").filterNotNull()
+            inputs = config.getStringList("$path.inputs").filterNotNull()
 
 
             if(args.isEmpty() && inputs.isNotEmpty())
@@ -196,19 +273,142 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
 
         if(content == null) {
-            val embed = getEmbedFromYml(config, "$path.embed", { text ->
-                text
+            val embed = LegacyGetYmlEmbed({
+                var form = setCommandPlaceholders(it, prefix, cmd, inputs?.joinToString(" ") ?: "")
+
+                if(player == null)
+                    form = setDiscordPlaceholders(event.member!!, form)
+                else
+                    form = setPlaceholdersForDiscordMessage(event.member!!, player!!, form)
+
+                form
                     .replace("{messageContent}", event.message.contentRaw)
                     .replace("{messageContentWithoutCommand}", event.message.contentRaw.substring(prefix.length+cmd.length+1))
 
                 if(player != null) {
-                    text
+                    form
                         .replace("{username}", player!!.name)
                         .replace("{joinDate}", sdf.format(Date(player!!.firstPlayed)))
                         .replace("{PlayerStatus}", "Online")
                         .replace("{playerStatus}", "online")
-                } else text
-            }).build()
+                } else form
+            }, "$path.embed", main.defaultConfig).build()
+
+            event.channel.sendMessageEmbeds(embed).queue()
+        } else event.channel.sendMessage(content).queue()
+    }
+
+    private fun customCommand(event: github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent, cmd: String, prefix: String, args: List<String>)
+    {
+        val path = "customCommands.$cmd"
+
+        if(config.isBoolean("$path.adminCommand"))
+            if(config.getBoolean("$path.adminCommand"))
+                if(!main.moderatorManager.isModerator(event.member!!)) {
+                    val embed = github.scarsz.discordsrv.dependencies.jda.api.EmbedBuilder()
+                        .setDescription(config.getString("noPermissionMessage"))
+                        .setColor(Color(failColor))
+                        .build()
+
+                    event.channel.sendMessageEmbeds(embed).queue()
+                    return
+                }
+
+        if(config.isBoolean("$path.requiresInput"))
+            if(config.getBoolean("$path.requiresInput"))
+                if(args.isEmpty()) {
+                    val embed = github.scarsz.discordsrv.dependencies.jda.api.EmbedBuilder()
+                        .setColor(failColor)
+                        .setDescription("This command requires any kind of input!")
+
+                    event.channel.sendMessageEmbeds(embed.build()).queue()
+                    return
+                }
+
+        val embedExists = config.isConfigurationSection("$path.embed")
+
+        val content = if(embedExists) null else getMultilineableString(config, "$path.content")
+            ?.replace("{messageContent}", event.message.contentRaw)
+            ?.replace("{messageContentWithoutCommand}", event.message.contentRaw.substring(prefix.length+cmd.length+1))
+
+        if(content == null && !embedExists) {
+            event.channel.sendMessage("Invalid yaml configuration. Embed or Content must be present!").queue()
+            return
+        }
+
+        var player: Player? = null
+        var inputs: List<String>? = null
+
+        if(config.isList("$path.inputs")) {
+            inputs = config.getStringList("$path.inputs").filterNotNull()
+
+
+            if(args.isEmpty() && inputs.isNotEmpty())
+            {
+                val embed = github.scarsz.discordsrv.dependencies.jda.api.EmbedBuilder()
+                    .setColor(failColor)
+                    .setDescription("No arguments provided!\nUsage: $prefix$cmd ${inputs.joinToString(" ")}")
+
+                event.channel.sendMessageEmbeds(embed.build()).queue()
+                return
+            }
+
+            inputs.forEachIndexed { index, input ->
+                when(input) {
+                    "OnlinePlayer" -> {
+                        if(args.size <= index) {
+                            val embed = github.scarsz.discordsrv.dependencies.jda.api.EmbedBuilder()
+                                .setColor(failColor)
+                                .setDescription("No ${index + 1}. parameter provided\nUsage: $prefix$cmd ${inputs.joinToString(" ")}")
+
+                            event.channel.sendMessageEmbeds(embed.build()).queue()
+                            return
+                        }
+
+                        player = server.getPlayer(args[index])
+
+                        if(player == null) {
+                            val embed = github.scarsz.discordsrv.dependencies.jda.api.EmbedBuilder()
+                                .setColor(failColor)
+                                .setDescription("Player not found!\nUsage: $prefix$cmd ${inputs.joinToString(" ")}")
+
+                            event.channel.sendMessageEmbeds(embed.build()).queue()
+                            return
+                        }
+                    }
+                }
+            }
+        }
+
+        val sdf = SimpleDateFormat("dd.MM.yyyy")
+
+        if(player != null) {
+            content?.replace("{username}", player!!.name)?.replace("{joinDate}", sdf.format(Date(player!!.firstPlayed)))
+                ?.replace("{PlayerStatus}", "Online")?.replace("{playerStatus}", "online")
+        }
+
+
+        if(content == null) {
+            val embed = GetYmlEmbed( {
+                var form = setCommandPlaceholders(it, prefix, cmd, inputs?.joinToString(" ") ?: "")
+
+                if(player == null)
+                    form = setDiscordPlaceholders(event.member!!, form)
+                else
+                    form = setPlaceholdersForDiscordMessage(event.member!!, player!!, form)
+
+                form
+                    .replace("{messageContent}", event.message.contentRaw)
+                    .replace("{messageContentWithoutCommand}", event.message.contentRaw.substring(prefix.length+cmd.length+1))
+
+                if(player != null) {
+                    form
+                        .replace("{username}", player!!.name)
+                        .replace("{joinDate}", sdf.format(Date(player!!.firstPlayed)))
+                        .replace("{PlayerStatus}", "Online")
+                        .replace("{playerStatus}", "online")
+                } else form
+            }, "$path.embed", main.defaultConfig).build()
 
             event.channel.sendMessageEmbeds(embed).queue()
         } else event.channel.sendMessage(content).queue()
