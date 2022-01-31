@@ -141,7 +141,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
         fun sendMsg(winner: Member, winnerServer: OfflinePlayer, landSide: String) {
             val formatter = DecimalFormat("#,###.##")
 
-            event.channel.sendMessageEmbeds(GetYmlEmbed( {
+            event.replyEmbeds(GetYmlEmbed( {
                 val form = setCommandPlaceholders(it, name, usage)
                 setPlaceholdersForDiscordMessage(winner, winnerServer, form)
                     .replace("{land_side}", landSide)

@@ -223,7 +223,7 @@ class RemoveMoney(main: DiscordEconomyBridge): Command(main) {
         }
 
         fun sendMsg(embed: github.scarsz.discordsrv.dependencies.jda.api.entities.MessageEmbed) {
-            event.channel.sendMessageEmbeds(embed).queue()
+            event.replyEmbeds(embed).queue()
         }
 
         val player = server.getPlayer(uuid)
