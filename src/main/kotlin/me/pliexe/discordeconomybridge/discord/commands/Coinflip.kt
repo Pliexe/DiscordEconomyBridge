@@ -2,10 +2,12 @@ package me.pliexe.discordeconomybridge.discord.commands
 
 import github.scarsz.discordsrv.DiscordSRV
 import github.scarsz.discordsrv.dependencies.jda.api.entities.Member
+import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.ButtonClickEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent
 import github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.OptionType
 import github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.build.CommandData
+import github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.discord.Command
 import me.pliexe.discordeconomybridge.discord.GetYmlEmbed
@@ -14,6 +16,9 @@ import me.pliexe.discordeconomybridge.discord.setPlaceholdersForDiscordMessage
 import me.pliexe.discordeconomybridge.formatMoney
 import org.bukkit.OfflinePlayer
 import java.text.DecimalFormat
+import java.util.*
+import kotlin.collections.HashMap
+import kotlin.concurrent.schedule
 import kotlin.random.Random
 
 class Coinflip(main: DiscordEconomyBridge) : Command(main) {
@@ -23,6 +28,8 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
 
     override val usage: String
         get() = "@user(The user to challenge) amount(The amount to wager)"
+
+    val buttonEvents = HashMap<String, ((e: ButtonClickEvent) -> Unit)>()
 
     override fun getSlashCommandData(): CommandData {
         return CommandData(name, "Flip a coin. You win if you get head.")
@@ -68,36 +75,95 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
 
         val challengerPlayer = server.getOfflinePlayer(challengerUuid)
 
-        fun sendMsg(winner: Member, winnerServer: OfflinePlayer, landSide: String) {
-            val formatter = DecimalFormat("#,###.##")
+        if(!main.getEconomy().hasAccount(challengerPlayer))
+            main.getEconomy().createPlayerAccount(challengerPlayer)
 
-            event.channel.sendMessageEmbeds(GetYmlEmbed( {
+        val challengerBalance = main.getEconomy().getBalance(challengerPlayer)
+
+        if(wager > challengerBalance)
+            return fail(event, "The opponent does not have enough money to accept!")
+
+        val formatter = DecimalFormat("#,###.##")
+
+        fun sendMsg(winner: Member, loser: Member, winnerServer: OfflinePlayer, landSide: String, bevent: ButtonClickEvent) {
+            bevent.editMessageEmbeds(GetYmlEmbed( {
                 val form = setCommandPlaceholders(it, prefix, name, usage)
                 setPlaceholdersForDiscordMessage(winner, winnerServer, form)
+                    .replace("%discord_other_username%", loser.user.name)
+                    .replace("%discord_other_tag%", loser.user.asTag)
+                    .replace("%discord_other_discriminator%", loser.user.discriminator)
                     .replace("{land_side}", landSide)
                     .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-            }, "coinflipCommandEmbed", main.discordMessagesConfig).build()).queue()
+            }, "coinflipCommandEmbed", main.discordMessagesConfig).build()).setContent("** **").queue()
         }
 
-        if(Random.nextInt(0, 2) > 0)
-        {
-            if(!main.getEconomy().hasAccount(challengerPlayer))
-                main.getEconomy().createPlayerAccount(challengerPlayer)
+        fun decline(bevent: ButtonClickEvent? = null) {
+            val embed = GetYmlEmbed( {
+                val form = setCommandPlaceholders(it, prefix, name, usage)
+                setPlaceholdersForDiscordMessage(event.member!!, wagerPlayer, form)
+                    .replace("%discord_other_username%", challenger.user.name)
+                    .replace("%discord_other_tag%", challenger.user.asTag)
+                    .replace("%discord_other_discriminator%", challenger.user.discriminator)
+                    .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+            }, "coinflipCommandDeclineEmbed", main.discordMessagesConfig).build()
 
-            main.getEconomy().depositPlayer(challengerPlayer, wager)
-            main.getEconomy().withdrawPlayer(wagerPlayer, wager)
-
-            sendMsg(challenger, challengerPlayer, "tail")
-        } else {
-            if(!main.getEconomy().hasAccount(challengerPlayer))
-                main.getEconomy().createPlayerAccount(challengerPlayer)
-
-            main.getEconomy().depositPlayer(wagerPlayer, wager)
-            main.getEconomy().withdrawPlayer(challengerPlayer, wager)
-
-            sendMsg(event.member!!, wagerPlayer, "head")
+            if(bevent == null)
+                event.channel.sendMessageEmbeds(embed).queue()
+            else bevent.editMessageEmbeds(embed).setContent("** **").queue()
         }
 
+        event.channel.sendMessageEmbeds(GetYmlEmbed({
+            val form = setCommandPlaceholders(it, prefix, name, usage)
+            setPlaceholdersForDiscordMessage(event.member!!, wagerPlayer, form)
+                .replace("%discord_other_username%", challenger.user.name)
+                .replace("%discord_other_tag%", challenger.user.asTag)
+                .replace("%discord_other_discriminator%", challenger.user.discriminator)
+                .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+        },"coinflipCommandConfirmEmbed", main.discordMessagesConfig).build())
+            .setActionRow(mutableListOf(
+                Button.success("accept", "Accept"),
+                Button.danger("decline", "Decline")
+            ))
+            .content(if(main.discordMessagesConfig.isBoolean("coinflipCommandDeclineEmbed.ping")) (if(main.discordMessagesConfig.getBoolean("coinflipCommandDeclineEmbed.ping")) "<@${challenger.id}>" else null) else null)
+            .queue {message ->
+                val tmr = Timer("CFTMOT", false).schedule(300000) {
+                    decline()
+                }
+                buttonEvents[message.id] = { bevent ->
+                    if(bevent.user.id != challenger.id)
+                        bevent.reply("You may not interact with this menu!").setEphemeral(true).queue()
+                    else
+                    {
+                        tmr.cancel()
+                        when(bevent.componentId)
+                        {
+                            "accept" -> {
+                                if(Random.nextInt(0, 2) > 0)
+                                {
+                                    if(!main.getEconomy().hasAccount(challengerPlayer))
+                                        main.getEconomy().createPlayerAccount(challengerPlayer)
+
+                                    main.getEconomy().depositPlayer(challengerPlayer, wager)
+                                    main.getEconomy().withdrawPlayer(wagerPlayer, wager)
+
+                                    sendMsg(challenger, event.member!!, challengerPlayer, "tail", bevent)
+                                } else {
+                                    if(!main.getEconomy().hasAccount(challengerPlayer))
+                                        main.getEconomy().createPlayerAccount(challengerPlayer)
+
+                                    main.getEconomy().depositPlayer(wagerPlayer, wager)
+                                    main.getEconomy().withdrawPlayer(challengerPlayer, wager)
+
+                                    sendMsg(event.member!!, challenger, wagerPlayer, "head", bevent)
+                                }
+                            }
+                            "decline" -> {
+                                decline(bevent)
+                            }
+                        }
+                    }
+                }
+            }
     }
 
     override fun run(event: SlashCommandEvent) {
@@ -108,7 +174,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
 
         val wagerPlayer = server.getOfflinePlayer(wagerUuid)
 
-        val wager = event.options.get(1).asDouble
+        val wager = event.options[1].asDouble
 
         val minBet = if(config.isDouble("minBet")) config.getDouble("minBet") else 100.0
 
@@ -138,35 +204,97 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
 
         val challengerPlayer = server.getOfflinePlayer(challengerUuid)
 
-        fun sendMsg(winner: Member, winnerServer: OfflinePlayer, landSide: String) {
-            val formatter = DecimalFormat("#,###.##")
+        if(!main.getEconomy().hasAccount(challengerPlayer))
+            main.getEconomy().createPlayerAccount(challengerPlayer)
 
-            event.replyEmbeds(GetYmlEmbed( {
+        val challengerBalance = main.getEconomy().getBalance(challengerPlayer)
+
+        if(wager > challengerBalance)
+            return fail(event, "The opponent does not have enough money to accept!")
+
+        val formatter = DecimalFormat("#,###.##")
+
+        fun sendMsg(winner: Member, loser: Member, winnerServer: OfflinePlayer, landSide: String, bevent: ButtonClickEvent) {
+            bevent.editMessageEmbeds(GetYmlEmbed( {
                 val form = setCommandPlaceholders(it, name, usage)
                 setPlaceholdersForDiscordMessage(winner, winnerServer, form)
+                    .replace("%discord_other_username%", loser.user.name)
+                    .replace("%discord_other_tag%", loser.user.asTag)
+                    .replace("%discord_other_discriminator%", loser.user.discriminator)
                     .replace("{land_side}", landSide)
                     .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-            }, "coinflipCommandEmbed", main.discordMessagesConfig).build()).queue()
+            }, "coinflipCommandEmbed", main.discordMessagesConfig).build()).setContent("** **").queue()
         }
 
-        if(Random.nextInt(0, 2) > 0)
-        {
-            if(!main.getEconomy().hasAccount(challengerPlayer))
-                main.getEconomy().createPlayerAccount(challengerPlayer)
+        fun decline(bevent: ButtonClickEvent? = null) {
+            val embed = GetYmlEmbed( {
+                val form = setCommandPlaceholders(it, name, usage)
+                setPlaceholdersForDiscordMessage(event.member!!, wagerPlayer, form)
+                    .replace("%discord_other_username%", challenger.user.name)
+                    .replace("%discord_other_tag%", challenger.user.asTag)
+                    .replace("%discord_other_discriminator%", challenger.user.discriminator)
+                    .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+            }, "coinflipCommandDeclineEmbed", main.discordMessagesConfig).build()
 
-            main.getEconomy().depositPlayer(challengerPlayer, wager)
-            main.getEconomy().withdrawPlayer(wagerPlayer, wager)
-
-            sendMsg(challenger, challengerPlayer, "tail")
-        } else {
-            if(!main.getEconomy().hasAccount(challengerPlayer))
-                main.getEconomy().createPlayerAccount(challengerPlayer)
-
-            main.getEconomy().depositPlayer(wagerPlayer, wager)
-            main.getEconomy().withdrawPlayer(challengerPlayer, wager)
-
-            sendMsg(event.member!!, wagerPlayer, "head")
+            if(bevent == null)
+                event.replyEmbeds(embed).queue()
+            else bevent.editMessageEmbeds(embed).setContent("** **").queue()
         }
+
+        event.replyEmbeds(GetYmlEmbed({
+            val form = setCommandPlaceholders(it, name, usage)
+            setPlaceholdersForDiscordMessage(event.member!!, wagerPlayer, form)
+                .replace("%discord_other_username%", challenger.user.name)
+                .replace("%discord_other_tag%", challenger.user.asTag)
+                .replace("%discord_other_discriminator%", challenger.user.discriminator)
+                .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+        },"coinflipCommandConfirmEmbed", main.discordMessagesConfig).build())
+            .addActionRow(mutableListOf(
+                Button.success("accept", "Accept"),
+                Button.danger("decline", "Decline")
+            ))
+            .setContent(if(main.discordMessagesConfig.isBoolean("coinflipCommandDeclineEmbed.ping")) (if(main.discordMessagesConfig.getBoolean("coinflipCommandDeclineEmbed.ping")) "<@${challenger.id}>" else null) else null)
+            .queue {messageInteraction ->
+                messageInteraction.retrieveOriginal().queue { message ->
+                    val tmr = Timer("CFTMOT", false).schedule(300000) {
+                        decline()
+                    }
+                    buttonEvents[message.id] = { bevent ->
+                        if(bevent.user.id != challenger.id)
+                            bevent.reply("You may not interact with this menu!").setEphemeral(true).queue()
+                        else
+                        {
+                            tmr.cancel()
+                            when(bevent.componentId)
+                            {
+                                "accept" -> {
+                                    if(Random.nextInt(0, 2) > 0)
+                                    {
+                                        if(!main.getEconomy().hasAccount(challengerPlayer))
+                                            main.getEconomy().createPlayerAccount(challengerPlayer)
+
+                                        main.getEconomy().depositPlayer(challengerPlayer, wager)
+                                        main.getEconomy().withdrawPlayer(wagerPlayer, wager)
+
+                                        sendMsg(challenger, event.member!!, challengerPlayer, "tail", bevent)
+                                    } else {
+                                        if(!main.getEconomy().hasAccount(challengerPlayer))
+                                            main.getEconomy().createPlayerAccount(challengerPlayer)
+
+                                        main.getEconomy().depositPlayer(wagerPlayer, wager)
+                                        main.getEconomy().withdrawPlayer(challengerPlayer, wager)
+
+                                        sendMsg(event.member!!, challenger, wagerPlayer, "head", bevent)
+                                    }
+                                }
+                                "decline" -> {
+                                    decline(bevent)
+                                }
+                            }
+                        }
+                }
+            }
+            }
     }
 
 

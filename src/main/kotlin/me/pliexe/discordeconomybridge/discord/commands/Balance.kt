@@ -39,6 +39,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
                 val form = setCommandPlaceholders(it, prefix, name, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, player, form)
                     .replace("%custom_vault_eco_balance%", formatMoney(main.getEconomy().getBalance(player), config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace("%custom_player_online%", "Online")
             }, "balanceCommandEmbed", main.discordMessagesConfig, {
                 it == "ifOnline"
             }).build()
@@ -51,6 +52,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
                 val form = setCommandPlaceholders(it, prefix, name, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, player, form)
                     .replace("%custom_vault_eco_balance%", formatMoney(main.getEconomy().getBalance(player), config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace("%custom_player_online%", "Offline")
             }, "balanceCommandEmbed", main.discordMessagesConfig, {
                 it == "ifOnline"
             }).build()
@@ -125,6 +127,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
                 val form = setCommandPlaceholders(it, prefix, name, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, player, form)
                     .replace("%custom_vault_eco_balance%", formatMoney(main.getEconomy().getBalance(player), config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace("%custom_player_online%", "Online")
             }, "balanceCommandEmbed", main.discordMessagesConfig, {
                 it == "ifOnline"
             }).build()
@@ -137,6 +140,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
                 val form = setCommandPlaceholders(it, prefix, name, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, player, form)
                     .replace("%custom_vault_eco_balance%", formatMoney(main.getEconomy().getBalance(player), config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace("%custom_player_online%", "Offline")
             }, "balanceCommandEmbed", main.discordMessagesConfig, {
                 false
             }).build()
@@ -175,6 +179,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
             return GetYmlEmbed( {
                 val form = setCommandPlaceholders(it, name, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, player, form)
+                    .replace("%custom_player_online%", "Online")
                     .replace("%custom_vault_eco_balance%", formatMoney(main.getEconomy().getBalance(player), config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
             }, "balanceCommandEmbed", main.discordMessagesConfig, {
                 it == "ifOnline"
@@ -188,6 +193,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
                 val form = setCommandPlaceholders(it, name, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, player, form)
                     .replace("%custom_vault_eco_balance%", formatMoney(main.getEconomy().getBalance(player), config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace("%custom_player_online%", "Offline")
             }, "balanceCommandEmbed", main.discordMessagesConfig, {
                 false
             }).build()

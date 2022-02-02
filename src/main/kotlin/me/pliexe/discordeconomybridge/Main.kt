@@ -1,19 +1,15 @@
 package me.pliexe.discordeconomybridge
 
 import github.scarsz.discordsrv.DiscordSRV
-import me.pliexe.discordeconomybridge.discord.Listener
 import me.pliexe.discordeconomybridge.discord.registerClient
 import me.pliexe.discordeconomybridge.discordsrv.DiscordSRVListener
 import me.pliexe.discordeconomybridge.filemanager.ConfigManager
 import me.pliexe.discordeconomybridge.filemanager.DataConfig
 import net.dv8tion.jda.api.JDA
-import net.dv8tion.jda.api.JDABuilder
-import net.dv8tion.jda.api.entities.Activity
 import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.plugin.java.JavaPlugin
-import javax.security.auth.login.LoginException
 
 class DiscordEconomyBridge : JavaPlugin() {
 
@@ -67,7 +63,6 @@ class DiscordEconomyBridge : JavaPlugin() {
         }
 
         if(!CheckForConfigurations(this)) {
-            logger.severe("FALSE TRIGGER")
             server.pluginManager.disablePlugin(this)
             return
         }

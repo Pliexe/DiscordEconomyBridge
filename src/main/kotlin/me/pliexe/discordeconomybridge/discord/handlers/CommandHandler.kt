@@ -45,8 +45,9 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         return commands
     }
 
-    fun getEvents(): HashMap<String, (ButtonClickEvent) -> Unit> {
-        return (commands["blackjack"] as Blackjack).buttonEvents
+    fun getEvents(key: String): ((ButtonClickEvent) -> Unit)? {
+        return (commands["blackjack"] as Blackjack).buttonEvents[key]
+            ?: (commands["coinflip"] as Coinflip).buttonEvents[key]
     }
 
     fun loadCommand(command: Command)

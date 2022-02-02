@@ -256,7 +256,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                         Button.primary("double", "Double down").withDisabled(currentBalance - bet * 2 <= 0)
                     )).queue { message ->
                         msg = message
-                        val tmr = Timer("BLTMOT", false).schedule(240000) {
+                        val tmr = Timer("BLTMOT", false).schedule(300000) {
                             stand()
                         }
                         buttonEvents[message.id] = { bevent ->

@@ -109,9 +109,121 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
     if(!dMessageConfig.isSet("leaderboardCommandEmbed")) {
         logger.severe("leaderboardCommandEmbed is not set in discord_messages.yml")
         return false
-    } else if(!validateEmbed(dMessageConfig, "leaderboardCommandEmbed") && ((dMessageConfig.isSet("descriptionRepeat") && dMessageConfig.isString("descriptionRepeat")) || (dMessageConfig.isSet("fieldRepeatName") && dMessageConfig.isString("fieldRepeatName") && dMessageConfig.isSet("fieldRepeatValue") && dMessageConfig.isString("fieldRepeatValue"))))
+    } else if(!validateEmbed(dMessageConfig, "leaderboardCommandEmbed") && !(dMessageConfig.isString("leaderboardCommandEmbed.descriptionRepeat") || (dMessageConfig.isString("leaderboardCommandEmbed.fieldRepeatName") && dMessageConfig.isString("leaderboardCommandEmbed.fieldRepeatValue"))))
     {
         logger.severe("You don't have field, description or title set at leaderboardCommandEmbed.")
+        return false
+    }
+    
+    // Coinflip
+
+    if(!dMessageConfig.isSet("coinflipCommandEmbed")) {
+        logger.severe("coinflipCommandEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "coinflipCommandEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at coinflipCommandEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("coinflipCommandConfirmEmbed")) {
+        logger.severe("coinflipCommandConfirmEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "coinflipCommandConfirmEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at coinflipCommandConfirmEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("coinflipCommandDeclineEmbed")) {
+        logger.severe("coinflipCommandDeclineEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "coinflipCommandDeclineEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at coinflipCommandDeclineEmbed.")
+        return false
+    }
+
+    // Blackjack
+
+    if(!dMessageConfig.isSet("blackjackCommandShowEmbed")) {
+        logger.severe("blackjackCommandShowEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandShowEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandShowEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("blackjackCommandBlackjackOutcomePlayerEmbed")) {
+        logger.severe("blackjackCommandBlackjackOutcomePlayerEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandBlackjackOutcomePlayerEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandBlackjackOutcomePlayerEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("blackjackCommandBlackjackOutcomeDealerEmbed")) {
+        logger.severe("blackjackCommandBlackjackOutcomeDealerEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandBlackjackOutcomeDealerEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandBlackjackOutcomeDealerEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("blackjackCommandDrawOutcomeEmbed")) {
+        logger.severe("blackjackCommandDrawOutcomeEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandDrawOutcomeEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandDrawOutcomeEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("blackjackCommandDrawBlackjackOutcomeEmbed")) {
+        logger.severe("blackjackCommandDrawBlackjackOutcomeEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandDrawBlackjackOutcomeEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandDrawBlackjackOutcomeEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("blackjackCommandBustPlayerEmbed")) {
+        logger.severe("blackjackCommandBustPlayerEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandBustPlayerEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandBustPlayerEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("blackjackCommandBustDealerEmbed")) {
+        logger.severe("blackjackCommandBustDealerEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandBustDealerEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandBustDealerEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("blackjackCommandPlayerWinEmbed")) {
+        logger.severe("blackjackCommandPlayerWinEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandPlayerWinEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandPlayerWinEmbed.")
+        return false
+    }
+
+    if(!dMessageConfig.isSet("blackjackCommandDealerWinEmbed")) {
+        logger.severe("blackjackCommandDealerWinEmbed is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "blackjackCommandDealerWinEmbed") )
+    {
+        logger.severe("You don't have field, description or title set at blackjackCommandDealerWinEmbed.")
         return false
     }
 
@@ -180,7 +292,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
 //    if(dMessageConfig.isSet("leaderboardCommandEmbed")) {
 //        logger.severe("leaderboardCommandEmbed is not set in discord_messages.yml")
 //        return false
-//    } else if(!validateEmbed(dMessageConfig, "leaderboardCommandEmbed") && ((dMessageConfig.isSet("descriptionRepeat") && dMessageConfig.isString("descriptionRepeat")) || (dMessageConfig.isSet("fieldRepeatName") && dMessageConfig.isString("fieldRepeatName") && dMessageConfig.isSet("fieldRepeatValue") && dMessageConfig.isString("fieldRepeatValue"))))
+//    } else if(!validateEmbed(dMessageConfig, "leaderboardCommandEmbed") )
 //    {
 //        logger.severe("You don't have field, description or title set at leaderboardCommandEmbed. Restoring default description!")
 //        dMessageConfig.set("leaderboardCommandEmbed.descriptionRepeat", "{index}# %player_name% - %custom_vault_eco_balance%")

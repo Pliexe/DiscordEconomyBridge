@@ -74,7 +74,7 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
 
     override fun onButtonClick(event: ButtonClickEvent) {
         if(event.isFromGuild)
-            commandHandler.getEvents()[event.interaction.messageId]?.let { it(event) }
+            commandHandler.getEvents(event.interaction.messageId)?.let { it(event) }
     }
 
     override fun onSlashCommand(event: SlashCommandEvent) {

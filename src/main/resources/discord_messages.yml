@@ -63,7 +63,7 @@ balanceCommandEmbed:
       inline: true
     "Status":
       # Use playerStatus for lowercase outcome
-      text: "%player_online%"
+      text: "%custom_player_online%"
       inline: true
     "Balance":
       text: "%custom_vault_eco_balance%"
@@ -77,27 +77,39 @@ helpCommandEmbed:
   title: "These are the available commands"
   color: "#0048ad"
   fields:
-    "{prefix}balance":
+    "%discord_command_prefix%balance":
       text:
         - "See a pleyer's current balance"
         - "Usage: %discord_command_prefix%balance <username or uuid"
         - "Alias: %discord_command_prefix%bal"
       inline: false
-    "{prefix}addmoney":
+    "%discord_command_prefix%addmoney":
       text:
         - "Add money to a player"
         - "Usage: %discord_command_prefix%addmoney <amount> <username or uuid>"
       inline: false
-    "{prefix}removemoney":
+    "%discord_command_prefix%removemoney":
       text:
         - "Remove money from a player"
         - "Usage: %discord_command_prefix%removemoney <amount> <username or uuid>\nAlias: %discord_command_prefix%remmoney"
       inline: false
-    "{prefix}leaderboard":
+    "%discord_command_prefix%leaderboard":
       text:
         - "Shows the current leaderboard"
         - "Usage: %discord_command_prefix%leaderboard"
         - "Alias: %discord_command_prefix%top, %discord_command_prefix%lb"
+      inline: false
+    "%discord_command_prefix%blackjack":
+      text:
+        - "Play a game of blackjack for a specific amount of bet!"
+        - "Usage: %discord_command_prefix%blackjack <bet>"
+        - "Alias: %discord_command_prefix%bj"
+      inline: false
+    "%discord_command_prefix%coinflip":
+      text:
+        - "Flip a coin and wager on it against another player!"
+        - "Usage: %discord_command_prefix%coinflip"
+        - "Alias: %discord_command_prefix%cf"
       inline: false
 
 #############################
@@ -116,9 +128,29 @@ leaderboardCommandEmbed:
 # coinflip command embed #
 ##########################
 
+# Game outcome
 coinflipCommandEmbed:
   color: "#4287f5"
   description: "**%discord_user_username%** has won the coinflip. The coin landed on `{land_side}`!"
+  fields:
+    "Amount wagered":
+      text: "{amount_wagered}"
+
+
+
+# Accept/Confirm
+coinflipCommandConfirmEmbed:
+  color: "#ebd407"
+  ping: true
+  description: "**%discord_user_username%** has challenged you to a coinflip! %discord_other_username%"
+  fields:
+    "Amount wagered":
+      text: "{amount_wagered}"
+
+# Decline
+coinflipCommandDeclineEmbed:
+  color: "#d62400"
+  description: "%discord_other_username%. **%discord_user_username%** has declined the coinflip!"
   fields:
     "Amount wagered":
       text: "{amount_wagered}"
