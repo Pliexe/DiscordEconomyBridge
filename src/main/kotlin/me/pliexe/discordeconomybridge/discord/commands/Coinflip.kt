@@ -94,7 +94,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                     .replace("%discord_other_discriminator%", loser.user.discriminator)
                     .replace("{land_side}", landSide)
                     .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-            }, "coinflipCommandEmbed", main.discordMessagesConfig).build()).setContent("** **").queue()
+            }, "coinflipCommandEmbed", main.discordMessagesConfig).build()).setActionRows().setContent("** **").queue()
         }
 
         fun decline(bevent: ButtonClickEvent? = null) {
@@ -109,7 +109,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
 
             if(bevent == null)
                 event.channel.sendMessageEmbeds(embed).queue()
-            else bevent.editMessageEmbeds(embed).setContent("** **").queue()
+            else bevent.editMessageEmbeds(embed).setActionRows().setContent("** **").queue()
         }
 
         event.channel.sendMessageEmbeds(GetYmlEmbed({
@@ -135,6 +135,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                     else
                     {
                         tmr.cancel()
+                        buttonEvents.remove(message.id)
                         when(bevent.componentId)
                         {
                             "accept" -> {
@@ -223,7 +224,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                     .replace("%discord_other_discriminator%", loser.user.discriminator)
                     .replace("{land_side}", landSide)
                     .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-            }, "coinflipCommandEmbed", main.discordMessagesConfig).build()).setContent("** **").queue()
+            }, "coinflipCommandEmbed", main.discordMessagesConfig).build()).setActionRows().setContent("** **").queue()
         }
 
         fun decline(bevent: ButtonClickEvent? = null) {
@@ -238,7 +239,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
 
             if(bevent == null)
                 event.replyEmbeds(embed).queue()
-            else bevent.editMessageEmbeds(embed).setContent("** **").queue()
+            else bevent.editMessageEmbeds(embed).setActionRows().setContent("** **").queue()
         }
 
         event.replyEmbeds(GetYmlEmbed({
@@ -265,6 +266,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                         else
                         {
                             tmr.cancel()
+                            buttonEvents.remove(message.id)
                             when(bevent.componentId)
                             {
                                 "accept" -> {
