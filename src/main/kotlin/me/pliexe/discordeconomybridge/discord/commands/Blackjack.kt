@@ -4,15 +4,11 @@ import github.scarsz.discordsrv.dependencies.jda.api.entities.Message
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.ButtonClickEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent
-import github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.OptionType
-import github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.build.CommandData
-import github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
-import me.pliexe.discordeconomybridge.discord.Command
-import me.pliexe.discordeconomybridge.discord.GetYmlEmbed
-import me.pliexe.discordeconomybridge.discord.setCommandPlaceholders
-import me.pliexe.discordeconomybridge.discord.setPlaceholdersForDiscordMessage
+import me.pliexe.discordeconomybridge.discord.*
 import me.pliexe.discordeconomybridge.formatMoney
+import net.dv8tion.jda.api.interactions.commands.OptionType
+import org.bukkit.entity.Player
 import java.text.DecimalFormat
 import java.util.*
 import kotlin.collections.HashMap
@@ -39,18 +35,23 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
     override val usage: String
         get() = "bet"
 
-    val buttonEvents = HashMap<String, ((e: ButtonClickEvent) -> Unit)>()
+    override val description: String
+        get() = "Play a game of blackjack!"
 
-    override fun getSlashCommandData(): CommandData {
-        return CommandData(name, "Play a game of blackjack!")
-            .addOption(OptionType.NUMBER, "bet", "Amount to bet", true)
+    override fun getCommandOptions(): CommandOptions {
+        return CommandOptions()
+            .addOption(OptionType.NUMBER, "bet", "Amount to bet")
     }
 
-    override fun run(event: GuildMessageReceivedEvent, commandName: String, prefix: String, args: List<String>) {
-        if(args.isEmpty())
-            return fail(event, "No bet amount was given!")
+    override fun run(event: CommandEventData) {
+        var bet = if(event.isSlashCommand()) {
+            event.getOptionDouble("bet")!!
+        } else {
+            if(event.args!!.isEmpty())
+                return fail(event, "Bet amount was not given!")
 
-        var bet = args[0].toDoubleOrNull() ?: return fail(event, "Bet may only be an numeric value!")
+            event.args[0].toDoubleOrNull() ?: return fail(event, "Bet may only be an numeric value!")
+        }
 
         val minBet = if(config.isDouble("minBet")) config.getDouble("minBet") else 100.0
 
@@ -99,105 +100,120 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
 
         val formatter = DecimalFormat("#,###.##")
 
-        var msg: Message? = null
+        var msg: me.pliexe.discordeconomybridge.discord.Message? = null
 
-        fun blackjackOutcome(enemy: Boolean, bEvent: ButtonClickEvent? = null) {
-            if(enemy)
-                main.getEconomy().withdrawPlayer(player, bet)
-            else
-                main.getEconomy().depositPlayer(player, bet)
+        fun doTransaction(won: Boolean) {
+            val onlinePlayer = main.server.getPlayer(uuid)
+            if(onlinePlayer == null) {
+                val offlinePlayer = main.server.getOfflinePlayer(uuid)
+                if(won)
+                    main.getEconomy().depositPlayer(offlinePlayer, bet)
+                else main.getEconomy().withdrawPlayer(offlinePlayer, bet)
+            } else {
+                if(won)
+                    main.getEconomy().depositPlayer(onlinePlayer, bet)
+                else main.getEconomy().withdrawPlayer(onlinePlayer, bet)
+            }
+        }
 
-            val embed = GetYmlEmbed( { text ->
+        fun blackjackOutcome(enemy: Boolean, bEvent: ComponentInteractionEvent? = null) {
+            doTransaction(!enemy)
+
+            val embed = event.getYMLEmbed(if(enemy) "blackjackCommandBlackjackOutcomeDealerEmbed" else "blackjackCommandBlackjackOutcomePlayerEmbed", { text ->
 
 
-                val form = setCommandPlaceholders(text, prefix, name, usage)
+                val form = setCommandPlaceholders(text, event.prefix, event.commandName, description, usage)
                     .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
                     .replace("{your_cards_value}", calculateValue(yourCards).toString())
                     .replace(if(enemy) "{lose_amount}" else "{win_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
 
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, if(enemy) "blackjackCommandBlackjackOutcomeDealerEmbed" else "blackjackCommandBlackjackOutcomePlayerEmbed", main.discordMessagesConfig)
+                if(event.member == null)
+                    setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
+                else setPlaceholdersForDiscordMessage(event.member, player, form)
+            })
 
             if(bEvent == null)
-                event.channel.sendMessageEmbeds(embed.build()).queue()
+                event.sendEmbed(embed).queue()
             else
-                bEvent.editMessageEmbeds(embed.build()).setActionRows().queue()
+                bEvent.editEmbed(embed).removeActinRows().queue()
         }
 
-        fun draw(blackjack: Boolean, bEvent: ButtonClickEvent? = null) {
-            val embed = GetYmlEmbed( { text ->
+        fun draw(blackjack: Boolean, bEvent: ComponentInteractionEvent? = null) {
+            val embed = event.getYMLEmbed(if(blackjack) "blackjackCommandDrawBlackjackOutcomeEmbed" else "blackjackCommandDrawOutcomeEmbed", { text ->
 
-                val form = setCommandPlaceholders(text, prefix, name, usage)
+                val form = setCommandPlaceholders(text, event.prefix, event.commandName, description, usage)
                     .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
                     .replace("{your_cards_value}", calculateValue(yourCards).toString())
 
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, if(blackjack) "blackjackCommandDrawBlackjackOutcomeEmbed" else "blackjackCommandDrawOutcomeEmbed", main.discordMessagesConfig)
+                if(event.member == null)
+                    setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
+                else
+                    setPlaceholdersForDiscordMessage(event.member, player, form)
+            })
 
             if(bEvent == null)
             {
                 if(msg == null)
-                    event.channel.sendMessageEmbeds(embed.build()).queue()
-                else msg!!.editMessageEmbeds(embed.build()).setActionRows().queue()
+                    event.sendEmbed(embed).queue()
+                else msg!!.editEmbed(embed).removeActinRows().queue()
             }
             else
-                bEvent.editMessageEmbeds(embed.build()).setActionRows().queue()
+                bEvent.editEmbed(embed).removeActinRows().queue()
         }
 
-        fun bust(enemy: Boolean, bEvent: ButtonClickEvent? = null) {
+        fun bust(enemy: Boolean, bEvent: ComponentInteractionEvent? = null) {
 
-            if(enemy)
-                main.getEconomy().depositPlayer(player, bet)
-            else
-                main.getEconomy().withdrawPlayer(player, bet)
+            doTransaction(enemy)
 
-            val embed = GetYmlEmbed( { text ->
+            val embed = event.getYMLEmbed( if(enemy) "blackjackCommandBustDealerEmbed" else "blackjackCommandBustPlayerEmbed", { text ->
 
-                val form = setCommandPlaceholders(text, prefix, name, usage)
+                val form = setCommandPlaceholders(text, event.prefix, event.commandName, description, usage)
                     .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
                     .replace("{your_cards_value}", calculateValue(yourCards).toString())
                     .replace(if(enemy) "{win_amount}" else "{lose_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
 
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, if(enemy) "blackjackCommandBustDealerEmbed" else "blackjackCommandBustPlayerEmbed", main.discordMessagesConfig)
+                if(event.member == null)
+                    setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
+                else
+                    setPlaceholdersForDiscordMessage(event.member, player, form)
+            })
 
             if(bEvent == null)
-                msg!!.editMessageEmbeds(embed.build()).setActionRows().queue()
-            else bEvent.editMessageEmbeds(embed.build()).setActionRows().queue()
+                msg!!.editEmbed(embed).removeActinRows().queue()
+            else bEvent.editEmbed(embed).removeActinRows().queue()
         }
 
-        fun otherOutcomes(enemy: Boolean, bEvent: ButtonClickEvent? = null) {
-            if(enemy)
-                main.getEconomy().withdrawPlayer(player, bet)
-            else
-                main.getEconomy().depositPlayer(player, bet)
+        fun otherOutcomes(enemy: Boolean, bEvent: ComponentInteractionEvent? = null) {
 
-            val embed = GetYmlEmbed( { text ->
+            doTransaction(!enemy)
 
-                val form = setCommandPlaceholders(text, prefix, name, usage)
+            val embed = event.getYMLEmbed(if(enemy) "blackjackCommandDealerWinEmbed" else "blackjackCommandPlayerWinEmbed", { text ->
+
+                val form = setCommandPlaceholders(text, event.prefix, event.commandName, description, usage)
                     .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
                     .replace("{your_cards_value}", calculateValue(yourCards).toString())
                     .replace(if(enemy) "{lose_amount}" else "{win_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
 
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, if(enemy) "blackjackCommandDealerWinEmbed" else "blackjackCommandPlayerWinEmbed", main.discordMessagesConfig)
+                if(event.member == null)
+                    setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
+                else
+                    setPlaceholdersForDiscordMessage(event.member, player, form)
+            })
 
             if(bEvent == null)
-                msg!!.editMessageEmbeds(embed.build()).setActionRows().queue()
-            else bEvent.editMessageEmbeds(embed.build()).setActionRows().queue()
+                msg!!.editEmbed(embed).removeActinRows().queue()
+            else bEvent.editEmbed(embed).removeActinRows().queue()
         }
 
-        var hit: ((bEvent: ButtonClickEvent, messageId: String) -> Unit)? = null
-
-        fun resolveDealerActions(bEvent: ButtonClickEvent? = null): Boolean {
+        fun resolveDealerActions(bEvent: ComponentInteractionEvent? = null): Boolean {
             var failed = false
 
             do {
@@ -225,7 +241,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             return failed
         }
 
-        fun stand(bEvent: ButtonClickEvent? = null) {
+        fun stand(bEvent: ComponentInteractionEvent? = null) {
             val outc = resolveDealerActions(bEvent)
             if(outc) return
 
@@ -237,387 +253,88 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             else otherOutcomes(true, bEvent)
         }
 
-        fun ShowHand(bEvent: ButtonClickEvent? = null) {
-            val embed = GetYmlEmbed( { text ->
-                val form = setCommandPlaceholders(text, prefix, name, usage)
+        val begCalc = calculateValue(yourCards)
+        val begEnCalc = calculateValue(houseCards)
+
+        if(begCalc == 21 && begEnCalc == 21) return draw(true)
+        if(begCalc == 21) return blackjackOutcome(false)
+        if(begEnCalc == 21) return blackjackOutcome(true)
+
+        fun ShowHand(bEvent: ComponentInteractionEvent? = null) {
+            val embed = event.getYMLEmbed("blackjackCommandShowEmbed", {
+                val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)
                     .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards}", houseCards.slice(1 until houseCards.size).joinToString(" ") { it.emote })
                     .replace("{enemy_cards_value}", calculateValue(houseCards.subList(1, houseCards.size)).toString())
                     .replace("{your_cards_value}", calculateValue(yourCards).toString())
 
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, "blackjackCommandShowEmbed", main.discordMessagesConfig)
+                if(event.member == null)
+                    setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
+                else
+                    setPlaceholdersForDiscordMessage(event.member, player, form)
+            })
+
             if(bEvent == null)
             {
-                event.channel.sendMessageEmbeds(embed.build())
+                event.sendEmbed(embed)
                     .setActionRow(mutableListOf(
                         Button.primary("hit", "Hit"),
                         Button.primary("stand", "Stand"),
-                        Button.primary("double", "Double down").withDisabled(currentBalance - bet * 2 <= 0)
+                        Button.primary("double", "Double Down", currentBalance - bet * 2 <= 0)
                     )).queue { message ->
                         msg = message
-                        val tmr = Timer("BLTMOT", false).schedule(300000) {
-                            stand()
+
+                        val collector = message.createInteractionCollector(300000, true)
+
+                        fun hit(bEvent: ComponentInteractionEvent, messageId: String) {
+                            yourCards.add(currentDeck.removeAt(0))
+                            val score = calculateValue(yourCards)
+
+                            if(score == 21) {
+                                collector.stop()
+                                blackjackOutcome(false, bEvent)
+                            } else if(score > 21) {
+                                collector.stop()
+                                bust(false, bEvent)
+                            } else ShowHand(bEvent)
                         }
-                        buttonEvents[message.id] = { bevent ->
-                            if(bevent.user.id != event.author.id) {
-                                bevent.reply("You may not interact with this menu!").setEphemeral(true).queue()
-                            } else {
-                                tmr.cancel()
-                                when (bevent.componentId) {
-                                    "hit" -> {
-                                        hit!!(bevent, message.id)
-                                    }
-                                    "stand" -> {
-                                        buttonEvents.remove(message.id)
-                                        stand(bevent)
-                                    }
-                                    "double" -> {
-                                        buttonEvents.remove(message.id)
-                                        bet += bet
-                                        yourCards.add(currentDeck.removeAt(0))
-                                        val score = calculateValue(yourCards)
-                                        if (score == 21) blackjackOutcome(false, bevent)
-                                        else if (score > 21) bust(false, bevent)
-                                        else stand(bevent)
-                                    }
+
+                        collector.onClick = { interaction ->
+                            when(interaction.componentId) {
+                                "hit" -> {
+                                    hit(interaction, message.id)
+                                }
+                                "stand" -> {
+                                    collector.stop()
+                                    stand(interaction)
+                                }
+                                "double" -> {
+                                    collector.stop()
+                                    bet += bet
+                                    yourCards.add(currentDeck.removeAt(0))
+                                    val score = calculateValue(yourCards)
+                                    if(score == 21) blackjackOutcome(false, interaction)
+                                    else if(score > 21) bust(false, interaction)
+                                    else stand(interaction)
                                 }
                             }
                         }
-                    }
-            } else {
-                bEvent.editMessageEmbeds(embed.build())
-                    .setActionRow(mutableListOf(
-                        Button.primary("hit", "Hit"),
-                        Button.primary("stand", "Stand"),
-                        Button.primary("double", "Double down").withDisabled(currentBalance - bet * 2 <= 0)
-                    )).queue()
-            }
-        }
 
-        hit = { bEvent, msgId ->
-            yourCards.add(currentDeck.removeAt(0))
-
-            val score = calculateValue(yourCards)
-
-            if(score == 21) {
-                buttonEvents.remove(msgId)
-                blackjackOutcome(false, bEvent)
-            }
-            else if(score > 21) {
-                buttonEvents.remove(msgId)
-                bust(false, bEvent)
-            }
-            else {
-                ShowHand(bEvent)
-            }
-        }
-
-
-        val begCalc = calculateValue(yourCards)
-        val begEnCalc = calculateValue(houseCards)
-
-        if(begCalc == 21 && begEnCalc == 21) return draw(true)
-        if(begCalc == 21) return blackjackOutcome(false)
-        if(begEnCalc == 21) return blackjackOutcome(true)
-
-        ShowHand()
-
-    }
-
-    override fun run(event: SlashCommandEvent) {
-
-        var bet = event.options.first().asDouble
-
-        val minBet = if(config.isDouble("minBet")) config.getDouble("minBet") else 100.0
-
-        if(bet < minBet)
-            return fail(event, "The wager may not be lower than $minBet")
-
-        val maxBet = if(config.isDouble("maxBet")) config.getDouble("maxBet") else 100000000000000000.0
-
-        if(bet > maxBet)
-            return fail(event, "The wager may not be higher than $maxBet")
-
-        val uuid = DiscordSRV.getPlugin().accountLinkManager.getUuid(event.user.id)
-            ?: return fail(event, "Your account is not linked!")
-
-        val player = server.getOfflinePlayer(uuid)
-
-        if(!main.getEconomy().hasAccount(player))
-            main.getEconomy().createPlayerAccount(player)
-
-        val currentBalance = main.getEconomy().getBalance(player)
-
-        if(bet > currentBalance)
-            return fail(event, "You don't have enough money to bet the amount specified!")
-
-        val currentDeck = template.toMutableList()
-        currentDeck.shuffle()
-
-        val yourCards = mutableListOf(currentDeck.removeAt(0), currentDeck.removeAt(0))
-        val houseCards =  mutableListOf(currentDeck.removeAt(0), currentDeck.removeAt(0))
-
-        fun calculateValue(array: MutableList<Card>): Int {
-            val values = array.map { it.value }
-            val originalOutcome: Int = values.reduce { acc, curr ->
-                if (curr == 11 && acc > 10)
-                    acc + 1
-                else
-                    curr + acc
-            }
-
-            return if(originalOutcome > 21) values.reduce { acc, curr ->
-                if(curr == 11)
-                    acc + 1
-                else curr + acc
-            } else originalOutcome
-        }
-
-        val formatter = DecimalFormat("#,###.##")
-
-        var msg: Message? = null
-
-        fun blackjackOutcome(enemy: Boolean, bEvent: ButtonClickEvent? = null) {
-            if(enemy)
-                main.getEconomy().withdrawPlayer(player, bet)
-            else
-                main.getEconomy().depositPlayer(player, bet)
-
-            val embed = GetYmlEmbed( { text ->
-
-
-                val form = setCommandPlaceholders(text, name, usage)
-                    .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
-                    .replace("{your_cards_value}", calculateValue(yourCards).toString())
-                    .replace(if(enemy) "{lose_amount}" else "{win_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, if(enemy) "blackjackCommandBlackjackOutcomeDealerEmbed" else "blackjackCommandBlackjackOutcomePlayerEmbed", main.discordMessagesConfig)
-
-            if(bEvent == null)
-                event.replyEmbeds(embed.build()).queue()
-            else
-                bEvent.editMessageEmbeds(embed.build()).setActionRows().queue()
-        }
-
-        fun draw(blackjack: Boolean, bEvent: ButtonClickEvent? = null) {
-            val embed = GetYmlEmbed( { text ->
-
-                val form = setCommandPlaceholders(text, name, usage)
-                    .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
-                    .replace("{your_cards_value}", calculateValue(yourCards).toString())
-
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, if(blackjack) "blackjackCommandDrawBlackjackOutcomeEmbed" else "blackjackCommandDrawOutcomeEmbed", main.discordMessagesConfig)
-
-            if(bEvent == null)
-            {
-                if(msg == null)
-                    event.replyEmbeds(embed.build()).queue()
-                else msg!!.editMessageEmbeds(embed.build()).setActionRows().queue()
-            }
-            else
-                bEvent.editMessageEmbeds(embed.build()).setActionRows().queue()
-        }
-
-        fun bust(enemy: Boolean, bEvent: ButtonClickEvent? = null) {
-
-            if(enemy)
-                main.getEconomy().depositPlayer(player, bet)
-            else
-                main.getEconomy().withdrawPlayer(player, bet)
-
-            val embed = GetYmlEmbed( { text ->
-
-                val form = setCommandPlaceholders(text, name, usage)
-                    .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
-                    .replace("{your_cards_value}", calculateValue(yourCards).toString())
-                    .replace(if(enemy) "{win_amount}" else "{lose_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, if(enemy) "blackjackCommandBustDealerEmbed" else "blackjackCommandBustPlayerEmbed", main.discordMessagesConfig)
-
-            if(bEvent == null)
-                msg!!.editMessageEmbeds(embed.build()).setActionRows().queue()
-            else bEvent.editMessageEmbeds(embed.build()).setActionRows().queue()
-        }
-
-        fun otherOutcomes(enemy: Boolean, bEvent: ButtonClickEvent? = null) {
-            if(enemy)
-                main.getEconomy().withdrawPlayer(player, bet)
-            else
-                main.getEconomy().depositPlayer(player, bet)
-
-            val embed = GetYmlEmbed( { text ->
-
-                val form = setCommandPlaceholders(text, name, usage)
-                    .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
-                    .replace("{your_cards_value}", calculateValue(yourCards).toString())
-                    .replace(if(enemy) "{lose_amount}" else "{win_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, if(enemy) "blackjackCommandDealerWinEmbed" else "blackjackCommandPlayerWinEmbed", main.discordMessagesConfig)
-
-            if(bEvent == null)
-                msg!!.editMessageEmbeds(embed.build()).setActionRows().queue()
-            else bEvent.editMessageEmbeds(embed.build()).setActionRows().queue()
-        }
-
-        var hit: ((bEvent: ButtonClickEvent, messageId: String) -> Unit)? = null
-
-        fun resolveDealerActions(bEvent: ButtonClickEvent? = null): Boolean {
-            var failed = false
-
-            do {
-                val value = calculateValue(houseCards)
-                if(value > 21) {
-                    failed = true
-                    bust(true, bEvent)
-                    break
-                }
-
-                if(value == 21) {
-                    failed = true
-                    blackjackOutcome(true, bEvent)
-                    break
-                }
-
-
-                val chance = Random.nextInt(4 .. 21)
-
-                if(chance > value)
-                    houseCards.add(currentDeck.removeAt(0))
-                else break
-            } while (true)
-
-            return failed
-        }
-
-        fun stand(bEvent: ButtonClickEvent? = null) {
-            val outc = resolveDealerActions(bEvent)
-            if(outc) return
-
-            val yourScore = calculateValue(yourCards)
-            val dealerScore = calculateValue(houseCards)
-
-            if(yourScore == dealerScore) draw(false, bEvent)
-            else if(yourScore > dealerScore) otherOutcomes(false, bEvent)
-            else otherOutcomes(true, bEvent)
-        }
-
-        fun ShowHand(bEvent: ButtonClickEvent? = null) {
-            val embed = GetYmlEmbed( { text ->
-                val form = setCommandPlaceholders(text, name, usage)
-                    .replace("{your_cards}", yourCards.joinToString(" ") { it.emote })
-                    .replace("{enemy_cards}", houseCards.slice(1 until houseCards.size).joinToString(" ") { it.emote })
-                    .replace("{enemy_cards_value}", calculateValue(houseCards.subList(1, houseCards.size)).toString())
-                    .replace("{your_cards_value}", calculateValue(yourCards).toString())
-
-                setPlaceholdersForDiscordMessage(event.member!!, player, form)
-            }, "blackjackCommandShowEmbed", main.discordMessagesConfig)
-            if(bEvent == null)
-            {
-                event.replyEmbeds(embed.build())
-                    .addActionRow(mutableListOf(
-                        Button.primary("hit", "Hit"),
-                        Button.primary("stand", "Stand"),
-                        Button.primary("double", "Double down").withDisabled(currentBalance - bet * 2 <= 0)
-                    )).queue { interaction ->
-                        interaction.retrieveOriginal().queue { message ->
-                            msg = message
-                            val tmr = Timer("BLTMOT", false).schedule(240000) {
+                        collector.onDone = { doneType, _ ->
+                            if(doneType == InteractionCollector.DoneType.Expired)
                                 stand()
-                            }
-
-                            buttonEvents[message.id] = { bevent ->
-                                if(bevent.user.id != event.user.id) {
-                                    bevent.reply("You may not interact with this menu!").setEphemeral(true).queue()
-                                } else {
-                                    tmr.cancel()
-                                    when (bevent.componentId) {
-                                        "hit" -> {
-                                            hit!!(bevent, message.id)
-                                        }
-                                        "stand" -> {
-                                            buttonEvents.remove(message.id)
-                                            stand(bevent)
-                                        }
-                                        "double" -> {
-                                            buttonEvents.remove(message.id)
-                                            bet += bet
-                                            yourCards.add(currentDeck.removeAt(0))
-                                            val score = calculateValue(yourCards)
-                                            if (score == 21) blackjackOutcome(false, bevent)
-                                            else if (score > 21) bust(false, bevent)
-                                            else stand(bevent)
-                                        }
-                                    }
-                                }
-                            }
                         }
-
-
                     }
             } else {
-                bEvent.editMessageEmbeds(embed.build())
+                bEvent.editEmbed(embed)
                     .setActionRow(mutableListOf(
                         Button.primary("hit", "Hit"),
                         Button.primary("stand", "Stand"),
-                        Button.primary("double", "Double down").withDisabled(currentBalance - bet * 2 <= 0)
+                        Button.primary("double", "Double Down", currentBalance - bet * 2 <= 0)
                     )).queue()
             }
         }
 
-        hit = { bEvent, msgId ->
-            yourCards.add(currentDeck.removeAt(0))
-
-            val score = calculateValue(yourCards)
-
-            if(score == 21) {
-                buttonEvents.remove(msgId)
-                blackjackOutcome(false, bEvent)
-            }
-            else if(score > 21) {
-                buttonEvents.remove(msgId)
-                bust(false, bEvent)
-            }
-            else {
-                ShowHand(bEvent)
-            }
-        }
-
-
-        val begCalc = calculateValue(yourCards)
-        val begEnCalc = calculateValue(houseCards)
-
-        if(begCalc == 21 && begEnCalc == 21) return draw(true)
-        if(begCalc == 21) return blackjackOutcome(false)
-        if(begEnCalc == 21) return blackjackOutcome(true)
-
         ShowHand()
-    }
-
-
-
-
-
-
-    override fun run(
-        event: net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent,
-        commandName: String,
-        prefix: String,
-        args: List<String>
-    ) {
-        if(config.isBoolean("noDiscordSRVwarn") && config.getBoolean("noDiscordSRVwarn"))
-            fail(event, "This command is not supported without DiscordSRV! You may automatically disable this messages in config.yml with noDiscordSRVwarn field")
     }
 }

@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.pliexe.discordeconomybridge"
-version = "2.1"
+version = "2.2"
 
 repositories {
     mavenCentral()
@@ -19,6 +19,7 @@ repositories {
     maven(url = "https://repo.codemc.org/repository/nms/")
     maven(url = "https://m2.dv8tion.net/releases")
     maven(url = "https://repo.extendedclip.com/content/repositories/placeholderapi/")
+    maven(url = "https://jitpack.io")
 }
 
 dependencies {
@@ -31,6 +32,7 @@ dependencies {
     compileOnly(fileTree("libs"))
 
     api("ch.qos.logback:logback-classic:1.2.10")
+    api("com.github.simplix-softworks:simplixstorage:3.2.4")
 
     implementation("net.dv8tion:JDA:4.4.0_350") {
         exclude("opus-java")

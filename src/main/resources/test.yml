@@ -1,0 +1,26 @@
+########################################
+########################################
+###                                  ###
+###             GuiMenu              ###
+###   Made by Pliexe/DiamondZombie   ###
+###                                  ###
+########################################
+
+#yo bro
+hello:
+  # test
+
+  yes:
+    - okay
+    # yooooo
+    - Test
+  okay: "I guess it works"
+
+# ANotehr comment
+
+#okay 2 sapces
+
+
+# done
+
+#why

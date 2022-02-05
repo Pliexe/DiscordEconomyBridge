@@ -27,6 +27,8 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
     private val customCommandAliases = HashMap<String, String>()
     private val commandAliases = HashMap<String, String>()
 
+    private val componentInteractionEvents = HashMap<String, (msg: ComponentInteractionEvent) -> Unit>()
+
     init {
         customCommands?.forEach { commandName ->
             if(config.isList("customCommands.$commandName.aliases")) {
@@ -45,9 +47,8 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         return commands
     }
 
-    fun getEvents(key: String): ((ButtonClickEvent) -> Unit)? {
-        return (commands["blackjack"] as Blackjack).buttonEvents[key]
-            ?: (commands["coinflip"] as Coinflip).buttonEvents[key]
+    fun getEvents(): HashMap<String, (msg: ComponentInteractionEvent) -> Unit> {
+        return componentInteractionEvents
     }
 
     fun loadCommand(command: Command)

@@ -1,6 +1,12 @@
 package me.pliexe.discordeconomybridge
 
+import de.leonhard.storage.Config
+import de.leonhard.storage.Json
+import de.leonhard.storage.LightningBuilder
+import de.leonhard.storage.internal.settings.ConfigSettings
 import github.scarsz.discordsrv.DiscordSRV
+import me.pliexe.discordeconomybridge.discord.LinkHandler
+import me.pliexe.discordeconomybridge.discord.handlers.CommandHandler
 import me.pliexe.discordeconomybridge.discord.registerClient
 import me.pliexe.discordeconomybridge.discordsrv.DiscordSRVListener
 import me.pliexe.discordeconomybridge.filemanager.ConfigManager
@@ -25,6 +31,8 @@ class DiscordEconomyBridge : JavaPlugin() {
     val discordMessagesConfig = ConfigManager.getConfig("discord_messages.yml", this, "discord_messages.yml")
     val defaultConfig = ConfigManager.getConfig("config.yml", this, "config.yml")
     private val discordSrvListener = DiscordSRVListener(this)
+    val commandHandler = CommandHandler(this)
+    val linkHandler = LinkHandler(this)
 
     /*fun getJda(): JDA { return jda!! }*/
     fun getEconomy(): Economy { return econ!! }
@@ -44,6 +52,14 @@ class DiscordEconomyBridge : JavaPlugin() {
     }
 
     override fun onEnable() {
+
+//        val test = ("test.yml", "plugins/Test")
+
+        val test = Json("test", "plugins/Test")
+        test.set("Hi", 69)
+
+        test.set("TestingHEllo.wo", "WORKS")
+        test.set("TestingHEllo.Yo", 69)
 
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null)
             placeholderApiEnabled = true
