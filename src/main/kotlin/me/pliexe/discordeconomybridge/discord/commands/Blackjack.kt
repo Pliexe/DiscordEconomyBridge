@@ -13,10 +13,10 @@ class Card (
 )
 
 private val template = arrayOf(
-    Card(2, "2:spades:"), Card(3, "3:spades:"), Card(4, "4:spades:"), Card(5, "5:spades:"), Card(6, "6:spades:"), Card(7, "7:spades:"), Card(8, "8:spades:"), Card(9, "9:spades:"), Card(10, "10:spades:"), Card(11, "A:spades:"), Card(10, "j:spades:"), Card(10, "q:spades:"), Card(10, "k:spades:"),
-    Card(2, "2:clubs:"), Card(3, "3:clubs:"), Card(4, "4:clubs:"), Card(5, "5:clubs:"), Card(6, "6:clubs:"), Card(7, "7:clubs:"), Card(8, "8:clubs:"), Card(9, "9:clubs:"), Card(10, "10:clubs:"), Card(11, "A:clubs:"), Card(10, "j:clubs:"), Card(10, "q:clubs:"), Card(10, "k:clubs:"),
-    Card(2, "2:diamonds:"), Card(3, "3:diamonds:"), Card(4, "4:diamonds:"), Card(5, "5:diamonds:"), Card(6, "6:diamonds:"), Card(7, "7:diamonds:"), Card(8, "8:diamonds:"), Card(9, "9:diamonds:"), Card(10, "10:diamonds:"), Card(11, "A:diamonds:"), Card(10, "j:diamonds:"), Card(10, "q:diamonds:"), Card(10, "k:diamonds:"),
-    Card(2, "2:hearts:"), Card(3, "3:hearts:"), Card(4, "4:hearts:"), Card(5, "5:hearts:"), Card(6, "6:hearts:"), Card(7, "7:hearts:"), Card(8, "8:hearts:"), Card(9, "9:hearts:"), Card(10, "10:hearts:"), Card(11, "A:hearts:"), Card(10, "j:hearts:"), Card(10, "q:hearts:"), Card(10, "k:hearts:")
+    Card(1, "A:spades:"), Card(2, "2:spades:"), Card(3, "3:spades:"), Card(4, "4:spades:"), Card(5, "5:spades:"), Card(6, "6:spades:"), Card(7, "7:spades:"), Card(8, "8:spades:"), Card(9, "9:spades:"), Card(10, "10:spades:"), Card(10, "j:spades:"), Card(10, "q:spades:"), Card(10, "k:spades:"),
+    Card(1, "A:clubs:"), Card(2, "2:clubs:"), Card(3, "3:clubs:"), Card(4, "4:clubs:"), Card(5, "5:clubs:"), Card(6, "6:clubs:"), Card(7, "7:clubs:"), Card(8, "8:clubs:"), Card(9, "9:clubs:"), Card(10, "10:clubs:"), Card(10, "j:clubs:"), Card(10, "q:clubs:"), Card(10, "k:clubs:"),
+    Card(1, "A:diamonds:"), Card(2, "2:diamonds:"), Card(3, "3:diamonds:"), Card(4, "4:diamonds:"), Card(5, "5:diamonds:"), Card(6, "6:diamonds:"), Card(7, "7:diamonds:"), Card(8, "8:diamonds:"), Card(9, "9:diamonds:"), Card(10, "10:diamonds:"), Card(10, "j:diamonds:"), Card(10, "q:diamonds:"), Card(10, "k:diamonds:"),
+    Card(1, "A:hearts:"), Card(2, "2:hearts:"), Card(3, "3:hearts:"), Card(4, "4:hearts:"), Card(5, "5:hearts:"), Card(6, "6:hearts:"), Card(7, "7:hearts:"), Card(8, "8:hearts:"), Card(9, "9:hearts:"), Card(10, "10:hearts:"), Card(10, "j:hearts:"), Card(10, "q:hearts:"), Card(10, "k:hearts:")
 )
 
 class Blackjack(main: DiscordEconomyBridge) : Command(main) {
@@ -73,21 +73,20 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
         val yourCards = mutableListOf(currentDeck.removeAt(0), currentDeck.removeAt(0))
         val houseCards =  mutableListOf(currentDeck.removeAt(0), currentDeck.removeAt(0))
 
-        fun calculateValue(array: MutableList<Card>): Int {
-            val values = array.map { it.value }
-            val originalOutcome: Int = values.reduce { acc, curr ->
-                if (curr == 11 && acc > 10)
-                    acc + 1
-                else
-                    curr + acc
+        fun calculateValue(array: List<Card>): Int {
+            var soft = false
+            var value = 0
+            array.forEach { card ->
+                if(card.value == 1 && !soft)
+                {
+                    value += 11
+                    soft = true
+                } else value += card.value
             }
-
-            return if(originalOutcome > 21) values.reduce { acc, curr ->
-                if(curr == 11)
-                    acc + 1
-                else curr + acc
-            } else originalOutcome
+            if(soft && value > 21) value -= 10
+            return value
         }
+
 
         val formatter = DecimalFormat("#,###.##")
 
@@ -204,37 +203,20 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             else bEvent.editMessage(embed).removeActinRows().queue()
         }
 
-        fun resolveDealerActions(bEvent: ComponentInteractionEvent? = null): Boolean {
-            var failed = false
+        fun resolveDealerActions(bEvent: ComponentInteractionEvent? = null): Int {
+            var cardsValue: Int
 
-            do {
-                val value = calculateValue(houseCards)
-                if(value > 21) {
-                    failed = true
-                    bust(true, bEvent)
-                    break
-                }
-
-                if(value == 21) {
-                    failed = true
-                    blackjackOutcome(true, bEvent)
-                    break
-                }
-
-
-                val chance = Random.nextInt(4 .. 21)
-
-                if(chance > value)
-                    houseCards.add(currentDeck.removeAt(0))
-                else break
-            } while (true)
-
-            return failed
+            while(calculateValue(houseCards).also { cardsValue = it } < 17) {
+                houseCards.add(currentDeck.removeAt(0))
+            }
+            return cardsValue
         }
 
         fun stand(bEvent: ComponentInteractionEvent? = null) {
-            val outc = resolveDealerActions(bEvent)
-            if(outc) return
+            val dealerValue = resolveDealerActions(bEvent)
+
+            if(dealerValue > 21) return bust(true, bEvent)
+            else if(dealerValue == 21) return blackjackOutcome(true, bEvent)
 
             val yourScore = calculateValue(yourCards)
             val dealerScore = calculateValue(houseCards)

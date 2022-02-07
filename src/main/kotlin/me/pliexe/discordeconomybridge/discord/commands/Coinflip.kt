@@ -53,6 +53,8 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
 
             wager = event.args[1].toDoubleOrNull() ?: return fail(event, "The wager must be an numeric value!")
         }
+        if(challenger.id == event.author.id)
+            return fail(event, "You may not play coinflip with yourself!")
 
         val minBet = if(config.isDouble("minBet")) config.getDouble("minBet") else 100.0
 

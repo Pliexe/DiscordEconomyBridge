@@ -4,6 +4,8 @@ import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.discord.*
 import net.dv8tion.jda.api.interactions.commands.OptionType
 import org.bukkit.Bukkit
+import java.util.*
+import kotlin.random.Random
 
 //:rock: :page_with_curl: :scissors:
 
@@ -60,6 +62,9 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
             }
         }
 
+        if(opponent != null && opponent.id == event.author.id)
+            return fail(event, "You may not play against yourself!")
+
         if(rounds < 1) return fail(event, "The amount of rounds may not be lower than 1!")
         if(rounds > 32) return fail(event, "The amount of rounds may not be higher than 32!")
 
@@ -77,6 +82,14 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
 
         val player = Bukkit.getOfflinePlayer(main.linkHandler.getUuid(event.author.id))
 
+        if(!main.getEconomy().hasAccount(player))
+            return fail(event, "You don't have any money in your balance")
+
+        val balance = main.getEconomy().getBalance(player)
+
+        if(bet > balance)
+            return fail(event, "You may not bet more than you have money available in your balance!")
+
         if(opponent != null)
         {
             if(!main.linkHandler.isLinked(opponent.id))
@@ -89,11 +102,9 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
         // p1 - win = 1
         // p2 - win = 2
         fun outcome(p1: Int, p2: Int): Int {
-            return when(p2 - p1) {
-                0 -> 0
-                1 -> 2
-                else -> 1
-            }
+            return if((p1+1) % 3 == p2) 2
+            else if(p1 == p2) 0
+            else 1
         }
 
         val rcpPaper =  getString(main.discordMessagesConfig!!.get("rpsCommand.rpcPaper")) ?: ":page_with_curl:"
@@ -101,13 +112,13 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
         val rcpScissor = getString(main.discordMessagesConfig!!.get("rpsCommand.rpcScissor")) ?: ":scissors:"
 
         class Round(
-            usedStr: String
+            val used: Int
         ) {
-            val used: Int = when(usedStr) {
+            constructor(usedStr: String): this(when(usedStr) {
                 "r" -> 0
                 "p" -> 1
                 else -> 2
-            }
+            })
 
             var win: Boolean? = null
 
@@ -116,7 +127,6 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                 return when(used) {
                     0 -> rcpRock
                     1 -> rcpPaper
-                    2 -> rcpScissor
                     else -> rcpScissor
                 }
             }
@@ -160,6 +170,97 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
             else rounds.subList(0, round - 1).sumBy { if(it.win!!) 1 else 0 }
         }
 
+        fun gameOver(interactionEvent: ComponentInteractionEvent?, playerWins: Boolean, message: Message? = null) {
+
+            if(opponent == null) {
+                if(playerWins) {
+                    main.getEconomy().depositPlayer(player, bet)
+                } else {
+                    main.getEconomy().withdrawPlayer(player, bet)
+                }
+            } else {
+                if(playerWins) {
+                    main.getEconomy().depositPlayer(player, bet)
+                    opponentPlayer!!.withdrawPlayer(main, bet)
+                } else {
+                    opponentPlayer!!.depositPlayer(main, bet)
+                    main.getEconomy().withdrawPlayer(player, bet)
+                }
+            }
+
+            val embed = if(opponent == null) event.getYMLEmbed(if(playerWins) "rpsCommand.messages.gameOverBotPlayerWin" else "rpsCommand.messages.gameOverBotPlayerLose", {
+                val form = setCommandPlaceholders(
+                    it
+                        .replace("{rounds_1}", formatRounds(opponentPlayed))
+                        .replace("{rounds_2}", formatRounds(playerPlayed))
+                        .replace("{rounds}", rounds.toString())
+                        .replace("{points_1}", calculatePoints(opponentPlayed).toString())
+                        .replace("{points_2}", calculatePoints(playerPlayed).toString()),
+                    event.prefix, event.commandName, description, name
+                )
+                setPlaceholdersForDiscordMessage(event.member!!, player, form)
+            }) else event.getYMLEmbed("rpsCommand.messages.gameOver", {
+                val form = setCommandPlaceholders(
+                    it
+                        .replace("{rounds_1}", formatRounds(playerPlayed))
+                        .replace("{rounds_2}", formatRounds(opponentPlayed))
+                        .replace("{rounds}", rounds.toString())
+                        .replace("{points_1}", calculatePoints(playerPlayed).toString())
+                        .replace("{points_2}", calculatePoints(opponentPlayed).toString())
+                    ,
+                    event.prefix, event.commandName, description, name
+                )
+                if(playerWins)
+                {
+                    setPlaceholdersForDiscordMessage(opponent, event.member!!, opponentPlayer!!, UniversalPlayer(player),
+                        setPlaceholdersForDiscordMessage(event.member!!, opponent, UniversalPlayer(player), opponentPlayer, form.replace("{p1}", "")).replace("{p2}", "")
+                    )
+                }
+                else
+                {
+                    setPlaceholdersForDiscordMessage(event.member!!, opponent, UniversalPlayer(player), opponentPlayer!!,
+                        setPlaceholdersForDiscordMessage(opponent, event.member!!, opponentPlayer, UniversalPlayer(player), form.replace("{p1}", "")).replace("{p2}", "")
+                    )
+                }
+            })
+
+            if(interactionEvent == null)
+                message!!.editMessage(embed).removeActinRows().queue()
+            else interactionEvent.editMessage(embed).removeActinRows().queue()
+        }
+
+        fun gameDraw(interactionEvent: ComponentInteractionEvent?, message: Message? = null) {
+            val embed = if(opponent == null) event.getYMLEmbed("rpsCommand.messages.drawBot", {
+                val form = setCommandPlaceholders(
+                    it
+                        .replace("{rounds_1}", formatRounds(opponentPlayed))
+                        .replace("{rounds_2}", formatRounds(playerPlayed))
+                        .replace("{rounds}", rounds.toString())
+                        .replace("{points_1}", calculatePoints(opponentPlayed).toString())
+                        .replace("{points_2}", calculatePoints(playerPlayed).toString()),
+                    event.prefix, event.commandName, description, name
+                )
+                setPlaceholdersForDiscordMessage(event.member!!, player, form)
+            }) else event.getYMLEmbed("rpsCommand.messages.draw", {
+                val form = setCommandPlaceholders(
+                    it
+                        .replace("{rounds_1}", formatRounds(playerPlayed))
+                        .replace("{rounds_2}", formatRounds(opponentPlayed))
+                        .replace("{rounds}", rounds.toString())
+                        .replace("{points_1}", calculatePoints(playerPlayed).toString())
+                        .replace("{points_2}", calculatePoints(opponentPlayed).toString())
+                    ,
+                    event.prefix, event.commandName, description, name
+                )
+                setPlaceholdersForDiscordMessage(event.member!!, opponent, UniversalPlayer(player), opponentPlayer!!, form)
+            })
+
+            if(interactionEvent == null)
+                message!!.editMessage(embed).removeActinRows().queue()
+            else interactionEvent.editMessage(embed).removeActinRows().queue()
+        }
+
+
         fun showMessage(interaction: ComponentInteractionEvent? = null, init: Boolean = false) {
             val embed = if(opponent == null) event.getYMLEmbed("rpsCommand.messages.gameBot", {
                 val form = setCommandPlaceholders(
@@ -167,6 +268,7 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                         .replace("{rounds_1}", formatRounds(opponentPlayed))
                         .replace("{rounds_2}", formatRounds(playerPlayed))
                         .replace("{round}", round.toString())
+                        .replace("{rounds}", rounds.toString())
                         .replace("{points_1}", calculatePoints(opponentPlayed).toString())
                         .replace("{points_2}", calculatePoints(playerPlayed).toString()),
                     event.prefix, event.commandName, description, name
@@ -180,6 +282,7 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                         .replace("{p1_locked_in}", if(lockedInP1) textLockedIn else textWaitingForLockIn)
                         .replace("{p2_locked_in}", if(lockedInP2) textLockedIn else textWaitingForLockIn)
                         .replace("{round}", round.toString())
+                        .replace("{rounds}", rounds.toString())
                         .replace("{points_1}", calculatePoints(playerPlayed).toString())
                         .replace("{points_2}", calculatePoints(opponentPlayed).toString())
                     ,
@@ -202,32 +305,87 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                         ))).queue { message ->
                             val collector = message.createInteractionCollector(300000, true)
 
+                            fun setOutcome(outcome: Int) {
+                                when (outcome) {
+                                    0 -> {
+                                        playerPlayed.last().win = true
+                                        opponentPlayed.last().win = true
+                                    }
+                                    1 -> {
+                                        playerPlayed.last().win = true
+                                        opponentPlayed.last().win = false
+                                    }
+                                    2 -> {
+                                        playerPlayed.last().win = false
+                                        opponentPlayed.last().win = true
+                                    }
+                                }
+                            }
+
+                            collector.onDone = { type, _ ->
+                                if(type == InteractionCollector.DoneType.Expired) {
+
+                                    val playerP = calculatePoints(playerPlayed)
+                                    val bot = calculatePoints(opponentPlayed)
+
+                                    if(playerP > bot)
+                                        gameOver(null, true, message)
+                                    else if(bot > playerP)
+                                        gameOver(null, false, message)
+                                    else gameDraw(null, message)
+                                }
+                            }
+
                             collector.onClick = { interactionEvent ->
                                 if(opponent == null) {
+                                    if(interactionEvent.user.id != event.author.id) {
+                                        sendWrongUserInteractionMessage(interactionEvent)
+                                    } else {
+                                        playerPlayed.add(Round(interactionEvent.componentId))
+                                        opponentPlayed.add(Round((0..2).random()))
 
+                                        setOutcome(outcome(playerPlayed.last().used, opponentPlayed.last().used))
+
+                                        round++
+                                        if(round > rounds) {
+                                            collector.stop()
+
+                                            val playerP = calculatePoints(playerPlayed)
+                                            val bot = calculatePoints(opponentPlayed)
+
+                                            if(playerP > bot)
+                                                gameOver(interactionEvent, true)
+                                            else if(bot > playerP)
+                                                gameOver(interactionEvent, false)
+                                            else gameDraw(interactionEvent)
+                                        } else showMessage(interactionEvent)
+                                    }
                                 } else {
                                     fun picked() {
                                         if(lockedInP1 && lockedInP2) {
-                                            when(outcome(playerPlayed.last().used, opponentPlayed.last().used)) {
-                                                0 -> {
-                                                    playerPlayed.last().win = true
-                                                    opponentPlayed.last().win = true
-                                                }
-                                                1 -> {
-                                                    playerPlayed.last().win = true
-                                                    opponentPlayed.last().win = false
-                                                }
-                                                2 -> {
-                                                    playerPlayed.last().win = false
-                                                    opponentPlayed.last().win = true
-                                                }
-                                            }
+                                            setOutcome(outcome(playerPlayed.last().used, opponentPlayed.last().used))
 
                                             lockedInP1 = false
                                             lockedInP2 = false
+
                                             round++
-                                        }
-                                        showMessage(interactionEvent)
+                                            if(round > rounds)
+                                            {
+                                                collector.stop()
+
+                                                val p1 = calculatePoints(playerPlayed)
+                                                val p2 = calculatePoints(opponentPlayed)
+
+                                                if(p1 > p2)
+                                                    gameOver(interactionEvent, true)
+                                                else if(p2 > p1)
+                                                    gameOver(interactionEvent, false)
+                                                else gameDraw(interactionEvent)
+                                            } else {
+                                                showMessage(interactionEvent)
+                                            }
+
+                                        } else showMessage(interactionEvent)
                                     }
 
                                     when(interactionEvent.user.id) {

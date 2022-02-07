@@ -632,8 +632,8 @@ class DiscordEmbed(
 
     fun setDescription(description: String): DiscordEmbed {
         if(nativeBuilder == null)
-            SRVBuilder!!.setTitle(description)
-        else nativeBuilder.setTitle(description)
+            SRVBuilder!!.setDescription(description)
+        else nativeBuilder.setDescription(description)
 
         return this
     }

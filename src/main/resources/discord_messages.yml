@@ -325,7 +325,7 @@ rpsCommand:
     game:
       color: "#4287f5"
       title: "Rock Paper Scissors"
-      description: "Waiting for lock-in. Round {round}"
+      description: "Waiting for lock-in. Round {round} out of {rounds}"
       fields:
         "%discord_user_username% - {points_1} - {p1_locked_in}":
           text: "\n{rounds_1}\n"
@@ -336,7 +336,7 @@ rpsCommand:
     gameBot:
       color: "#4287f5"
       title: "Rock Paper Scissors"
-      description: "Waiting for lock-in. {round}"
+      description: "Waiting for lock-in. Round {round} out of {rounds}"
       fields:
         "Bot - {points_1}":
           text: "\n{rounds_1}\n"
@@ -349,15 +349,47 @@ rpsCommand:
       title: "Rock Paper Scissors. Game has finished!"
       description: "%discord_user_username% (%player_name%) has won vs %discord_other_user_username% (%player_other_name%). Better luck next time %discord_other_user_username%!"
       fields:
-        "Bot - {points_1}":
+        "%{p1}discord_user_username% - {points_1}":
           text: "\n{rounds_1}\n"
-        "%discord_user_username% - {points_2}":
+        "%{p2}discord_user_username% - {points_2}":
           text: "\n{rounds_2}\n"
 
     draw:
       color: "#34d90b"
       title: "Rock Paper Scissors. Game has finished! Draw!"
       description: "%discord_user_username% (%player_name%) and %discord_other_user_username% (%player_other_name%) had same amount of points."
+      fields:
+        "%{p1}discord_user_username% - {points_1}":
+          text: "\n{rounds_1}\n"
+        "%{p2}discord_user_username% - {points_2}":
+          text: "\n{rounds_2}\n"
+
+    # Message when game is done against the bot
+
+    gameOverBotPlayerWin:
+      color: "#34d90b"
+      title: "Rock Paper Scissors. Game has finished!"
+      description: "%discord_user_username% (%player_name%) has won vs the bot!"
+      fields:
+        "Bot - {points_1}":
+          text: "\n{rounds_1}\n"
+        "%discord_user_username% - {points_2}":
+          text: "\n{rounds_2}\n"
+
+    gameOverBotPlayerLose:
+      color: "#34d90b"
+      title: "Rock Paper Scissors. Game has finished!"
+      description: "%discord_user_username% (%player_name%) has lost vs the bot!"
+      fields:
+        "Bot - {points_1}":
+          text: "\n{rounds_1}\n"
+        "%discord_user_username% - {points_2}":
+          text: "\n{rounds_2}\n"
+
+    drawBot:
+      color: "#34d90b"
+      title: "Rock Paper Scissors. Game has finished! Draw!"
+      description: "%discord_user_username% (%player_name%) and the bot had same amount of points."
       fields:
         "Bot - {points_1}":
           text: "\n{rounds_1}\n"

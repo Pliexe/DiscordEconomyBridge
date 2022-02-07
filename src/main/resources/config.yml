@@ -54,7 +54,7 @@ noDiscordSRVwarn: false
 
 # Min_Max wager/bet
 maxBet: 100000000000000000
-minBet: 100
+minBet: 50
 
 ## Aliases
 
