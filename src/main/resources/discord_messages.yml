@@ -114,6 +114,18 @@ helpCommandEmbed:
         - "Usage: %discord_command_prefix%coinflip"
         - "Alias: %discord_command_prefix%cf"
       inline: false
+    "%discord_command_prefix%pay":
+      text:
+        - "Send/Pay an certain amount of money to a player!"
+        - "Usage: %discord_command_prefix%pay @user amount"
+        - "Alias: %discord_command_prefix%cf"
+      inline: false
+    "%discord_command_prefix%rockpaperscissors":
+      text:
+        - "Play a game of rock papers scissors!"
+        - "Usage: %discord_command_prefix%rockpaperscissors [user] <bet> [rounds](max 32)"
+        - "Alias: %discord_command_prefix%cf"
+      inline: false
 
 #############################
 # leaderboard command embed #
