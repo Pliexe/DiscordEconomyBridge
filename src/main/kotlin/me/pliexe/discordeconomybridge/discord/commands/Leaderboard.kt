@@ -26,8 +26,8 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
             return fail(event, "There is no one to show on the leaderboard!")
 
         val formatter = DecimalFormat("#,###.##")
-        val currency = config.getString("Currency")
-        val leftSided = config.getBoolean("CurrencyLeftSide")
+        val currency = main.pluginConfig.currency
+        val leftSided = main.pluginConfig.currencyLeftSide
 
         val players = main.server.offlinePlayers.filter { main.getEconomy().hasAccount(it) }.map { User(main.getEconomy().getBalance(it), it) }.sortedByDescending { it.money }
 
@@ -35,13 +35,13 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
 
 //                getEmbedFromYml(config, "leaderboardCommandEmbed", text -> "hi", )
 
-        val embedNameTemplate = getString(main.discordMessagesConfig!!.get("leaderboardCommandEmbed.fieldRepeatName"))
-        val embedValueTemplate = getStringOrStringList("leaderboardCommandEmbed.fieldRepeatValue", main.discordMessagesConfig!!)
+        val embedNameTemplate = getString(main.discordMessagesConfig.get("leaderboardCommandEmbed.fieldRepeatName"))
+        val embedValueTemplate = getStringOrStringList("leaderboardCommandEmbed.fieldRepeatValue", main.discordMessagesConfig)
         val inline = getBool("leaderboardCommandEmbed.fieldRepeatInline") ?: false
 
         val embedCanBeSet = embedNameTemplate != null && embedValueTemplate != null
 
-        val descCanBeSet = getStringOrStringList("leaderboardCommandEmbed.descriptionRepeat", main.discordMessagesConfig!!) != null
+        val descCanBeSet = getStringOrStringList("leaderboardCommandEmbed.descriptionRepeat", main.discordMessagesConfig) != null
 
         if(!embedCanBeSet && !descCanBeSet)
             return fail(event,"Invalid yaml configuration. Either description or embed field must be set!")
@@ -69,7 +69,7 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
                 if(text == null)
                     text = ArrayList()
 
-                text.add(Placeholders(main.discordMessagesConfig!!.getString("leaderboardCommandEmbed.descriptionRepeat"), index, players[index].player))
+                text.add(Placeholders(main.discordMessagesConfig.getString("leaderboardCommandEmbed.descriptionRepeat"), index, players[index].player))
             }
 
             if(embedCanBeSet) {

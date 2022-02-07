@@ -48,7 +48,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
                      setPlaceholdersForDiscordMessage(event.author, player, form)
                 else
                     setPlaceholdersForDiscordMessage(event.member!!, player, form))
-                    .replace("%custom_vault_eco_balance%", formatMoney(player.getBalance(main), config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace("%custom_vault_eco_balance%", formatMoney(player.getBalance(main), main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
                     .replace("%custom_player_online%", if(player.isOnline) "Online" else "Offline")
             }, {
                 if(it == "ifOnline") player.isOnline else false

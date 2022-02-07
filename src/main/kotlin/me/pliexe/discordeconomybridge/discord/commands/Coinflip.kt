@@ -34,8 +34,8 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
 
         val wagerPlayer = server.getOfflinePlayer(wagerUuid)
 
-        var challenger: DiscordMember
-        var wager: Double
+        val challenger: DiscordMember
+        val wager: Double
         if(event.isSlashCommand()) {
             wager = event.getOptionDouble("wager")!!
             challenger = event.getOptionMember("user")!!
@@ -56,12 +56,12 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
         if(challenger.id == event.author.id)
             return fail(event, "You may not play coinflip with yourself!")
 
-        val minBet = if(config.isDouble("minBet")) config.getDouble("minBet") else 100.0
+        val minBet = main.pluginConfig.minBet
 
         if(wager < minBet)
             return fail(event, "The wager may not be lower than $minBet")
 
-        val maxBet = if(config.isDouble("maxBet")) config.getDouble("maxBet") else 100000000000000000.0
+        val maxBet = main.pluginConfig.maxBet
 
         if(wager > maxBet)
             return fail(event, "The wager may not be higher than $maxBet")
@@ -97,7 +97,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                     .replace("%discord_other_tag%", loser.user.asTag)
                     .replace("%discord_other_discriminator%", loser.user.discriminator)
                     .replace("{land_side}", landSide)
-                    .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace("{amount_wagered}", formatMoney(wager, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
             })).removeActinRows().queue()
         }
 
@@ -108,7 +108,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                     .replace("%discord_other_username%", challenger.user.name)
                     .replace("%discord_other_tag%", challenger.user.asTag)
                     .replace("%discord_other_discriminator%", challenger.user.discriminator)
-                    .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace("{amount_wagered}", formatMoney(wager, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
             })
 
             if(bevent == null)
@@ -122,10 +122,10 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                 .replace("%discord_other_username%", challenger.user.name)
                 .replace("%discord_other_tag%", challenger.user.asTag)
                 .replace("%discord_other_discriminator%", challenger.user.discriminator)
-                .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                .replace("{amount_wagered}", formatMoney(wager, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
         }).setActionRow(mutableListOf(
-            Button.success("accept", getStringOrStringList("coinflipButtonAccept", main.discordMessagesConfig!!) ?: "Accept"),
-            Button.danger("decline", getStringOrStringList("coinflipButtonDecline", main.discordMessagesConfig!!) ?: "Decline")
+            Button.success("accept", getStringOrStringList("coinflipButtonAccept", main.discordMessagesConfig) ?: "Accept"),
+            Button.danger("decline", getStringOrStringList("coinflipButtonDecline", main.discordMessagesConfig) ?: "Decline")
         ))
             .queue { message ->
 

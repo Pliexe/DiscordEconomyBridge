@@ -4,8 +4,6 @@ import me.pliexe.discordeconomybridge.discord.*
 import me.pliexe.discordeconomybridge.formatMoney
 import net.dv8tion.jda.api.interactions.commands.OptionType
 import java.text.DecimalFormat
-import kotlin.random.Random
-import kotlin.random.nextInt
 
 class Card (
     val value: Int,
@@ -44,12 +42,12 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             event.args[0].toDoubleOrNull() ?: return fail(event, "Bet may only be an numeric value!")
         }
 
-        val minBet = if(config.isDouble("minBet")) config.getDouble("minBet") else 100.0
+        val minBet = main.pluginConfig.minBet
 
         if(bet < minBet)
             return fail(event, "The wager may not be lower than $minBet")
 
-        val maxBet = if(config.isDouble("maxBet")) config.getDouble("maxBet") else 100000000000000000.0
+        val maxBet = main.pluginConfig.maxBet
 
         if(bet > maxBet)
             return fail(event, "The wager may not be higher than $maxBet")
@@ -90,7 +88,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
 
         val formatter = DecimalFormat("#,###.##")
 
-        var msg: me.pliexe.discordeconomybridge.discord.Message? = null
+        var msg: Message? = null
 
         fun doTransaction(won: Boolean) {
             val onlinePlayer = main.server.getPlayer(uuid)
@@ -117,7 +115,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                     .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
                     .replace("{your_cards_value}", calculateValue(yourCards).toString())
-                    .replace(if(enemy) "{lose_amount}" else "{win_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace(if(enemy) "{lose_amount}" else "{win_amount}", formatMoney(bet, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
 
                 if(event.member == null)
                     setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
@@ -166,7 +164,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                     .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
                     .replace("{your_cards_value}", calculateValue(yourCards).toString())
-                    .replace(if(enemy) "{win_amount}" else "{lose_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace(if(enemy) "{win_amount}" else "{lose_amount}", formatMoney(bet, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
 
                 if(event.member == null)
                     setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
@@ -190,7 +188,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                     .replace("{enemy_cards}", houseCards.joinToString(" ") { it.emote })
                     .replace("{enemy_cards_value}", calculateValue(houseCards).toString())
                     .replace("{your_cards_value}", calculateValue(yourCards).toString())
-                    .replace(if(enemy) "{lose_amount}" else "{win_amount}", formatMoney(bet, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                    .replace(if(enemy) "{lose_amount}" else "{win_amount}", formatMoney(bet, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
 
                 if(event.member == null)
                     setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
@@ -203,7 +201,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             else bEvent.editMessage(embed).removeActinRows().queue()
         }
 
-        fun resolveDealerActions(bEvent: ComponentInteractionEvent? = null): Int {
+        fun resolveDealerActions(): Int {
             var cardsValue: Int
 
             while(calculateValue(houseCards).also { cardsValue = it } < 17) {
@@ -213,7 +211,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
         }
 
         fun stand(bEvent: ComponentInteractionEvent? = null) {
-            val dealerValue = resolveDealerActions(bEvent)
+            val dealerValue = resolveDealerActions()
 
             if(dealerValue > 21) return bust(true, bEvent)
             else if(dealerValue == 21) return blackjackOutcome(true, bEvent)
@@ -251,9 +249,9 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             {
                 event.sendMessage(embed)
                     .setActionRow(mutableListOf(
-                        Button.primary("hit", getStringOrStringList("blackjackButtonHitLabel", main.discordMessagesConfig!!) ?: "Hit"),
-                        Button.primary("stand", getStringOrStringList("blackjackButtonStandLabel", main.discordMessagesConfig!!) ?: "Stand"),
-                        Button.primary("double", getStringOrStringList("blackjackButtonDoubleDownLabel", main.discordMessagesConfig!!) ?: "Double Down", currentBalance - bet * 2 <= 0)
+                        Button.primary("hit", getStringOrStringList("blackjackButtonHitLabel", main.discordMessagesConfig) ?: "Hit"),
+                        Button.primary("stand", getStringOrStringList("blackjackButtonStandLabel", main.discordMessagesConfig) ?: "Stand"),
+                        Button.primary("double", getStringOrStringList("blackjackButtonDoubleDownLabel", main.discordMessagesConfig) ?: "Double Down", currentBalance - bet * 2 <= 0)
                     )).queue { message ->
                         msg = message
 
@@ -261,7 +259,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
 
                         val collector = message.createInteractionCollector(300000, true)
 
-                        fun hit(bEvent: ComponentInteractionEvent, messageId: String) {
+                        fun hit(bEvent: ComponentInteractionEvent) {
                             yourCards.add(currentDeck.removeAt(0))
                             val score = calculateValue(yourCards)
 
@@ -280,7 +278,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                             } else {
                                 when (interaction.componentId) {
                                     "hit" -> {
-                                        hit(interaction, message.id)
+                                        hit(interaction)
                                     }
                                     "stand" -> {
                                         collector.stop()

@@ -4,8 +4,6 @@ import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.discord.*
 import net.dv8tion.jda.api.interactions.commands.OptionType
 import org.bukkit.Bukkit
-import java.util.*
-import kotlin.random.Random
 
 //:rock: :page_with_curl: :scissors:
 
@@ -68,12 +66,12 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
         if(rounds < 1) return fail(event, "The amount of rounds may not be lower than 1!")
         if(rounds > 32) return fail(event, "The amount of rounds may not be higher than 32!")
 
-        val minBet = if(config.isDouble("minBet")) config.getDouble("minBet") else 100.0
+        val minBet = main.pluginConfig.minBet
 
         if(bet < minBet)
             return fail(event, "The wager may not be lower than $minBet")
 
-        val maxBet = if(config.isDouble("maxBet")) config.getDouble("maxBet") else 100000000000000000.0
+        val maxBet = main.pluginConfig.maxBet
 
         if(bet > maxBet)
             return fail(event, "The wager may not be higher than $maxBet")
@@ -107,9 +105,9 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
             else 1
         }
 
-        val rcpPaper =  getString(main.discordMessagesConfig!!.get("rpsCommand.rpcPaper")) ?: ":page_with_curl:"
-        val rcpRock = getString(main.discordMessagesConfig!!.get("rpsCommand.rpcRock")) ?: ":rock:"
-        val rcpScissor = getString(main.discordMessagesConfig!!.get("rpsCommand.rpcScissor")) ?: ":scissors:"
+        val rcpPaper =  getString(main.discordMessagesConfig.get("rpsCommand.rpcPaper")) ?: ":page_with_curl:"
+        val rcpRock = getString(main.discordMessagesConfig.get("rpsCommand.rpcRock")) ?: ":rock:"
+        val rcpScissor = getString(main.discordMessagesConfig.get("rpsCommand.rpcScissor")) ?: ":scissors:"
 
         class Round(
             val used: Int
@@ -431,7 +429,7 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                 val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, opponent, UniversalPlayer(player), opponentPlayer!!, form)
                     .replace("{rounds}", rounds.toString())
-            }).setYesOrNoButtons(getString(main.discordMessagesConfig.get("rpsCommand.buttonAcceptLabel")) ?: "Accept", getString(main.discordMessagesConfig!!.get("rpsCommand.buttonDeclineLabel")) ?: "Decline")
+            }).setYesOrNoButtons(getString(main.discordMessagesConfig.get("rpsCommand.buttonAcceptLabel")) ?: "Accept", getString(main.discordMessagesConfig.get("rpsCommand.buttonDeclineLabel")) ?: "Decline")
                 .queue { message ->
                     message.awaitYesOrNo(300000, { it.user.id == opponent.id }) { outcome, interaction, deleted ->
                         if(outcome) {

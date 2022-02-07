@@ -1,43 +1,58 @@
 package me.pliexe.discordeconomybridge.discord
 
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
-import me.pliexe.discordeconomybridge.filemanager.Config
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.requests.GatewayIntent
+import org.bukkit.Bukkit
 import javax.security.auth.login.LoginException
 
-fun registerClient(main: DiscordEconomyBridge, defaultConfig: Config, token: String): JDA? {
+fun registerClient(main: DiscordEconomyBridge, defaultConfig: de.leonhard.storage.Config, token: String): JDA? {
 
     try {
-        val jda = JDABuilder.createDefault(token)
-            .setAutoReconnect(true)
-            .addEventListeners(Listener(main, main.server, defaultConfig))
-            .setActivity(if(defaultConfig.isString("statusType") && defaultConfig.isString("statusMessage"))
-                when(defaultConfig.getString("statusType")) {
-                    "Playing", "playing" -> Activity.playing(defaultConfig.getString("statusMessage"))
-                    "Watching", "watching" -> Activity.watching(defaultConfig.getString("statusMessage"))
-                    "Streaming", "streaming" -> Activity.streaming(defaultConfig.getString("statusMessage"), defaultConfig.getString("statusStreamURL"))
-                    "Listening", "listening" -> Activity.listening(defaultConfig.getString("statusMessage"))
-                    else -> null
-                }
-            else null)
-            .enableIntents(mutableListOf(GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES))
-            .build()
 
-        return jda
+        return JDABuilder.createDefault(token)
+            .setAutoReconnect(true)
+            .addEventListeners(Listener(main, main.server))
+            .setActivity(getActivity(defaultConfig))
+            .enableIntents(
+                mutableListOf(
+                    GatewayIntent.GUILD_MEMBERS,
+                    GatewayIntent.GUILD_MESSAGES,
+                    GatewayIntent.DIRECT_MESSAGES
+                )
+            )
+            .build()
     } catch (e: LoginException) {
         main.logger.severe("Failed connecting to discord! Disabling plugin!\nReason: ${e.message}")
         main.pluginLoader.disablePlugin(main)
         return null
     } catch (e: Exception) {
-        if(e is IllegalStateException && e.message.equals("Was shutdown trying to await status")) {
+        if (e is IllegalStateException && e.message.equals("Was shutdown trying to await status")) {
             main.pluginLoader.disablePlugin(main)
             return null
         }
         main.logger.warning("An unknown error occurred building JDA...\nError:${e.message}\n${e.stackTraceToString()}")
         main.pluginLoader.disablePlugin(main)
         return null
+    }
+}
+
+fun getActivity(defaultConfig: de.leonhard.storage.Config): Activity? {
+    return try {
+        val message = defaultConfig.getString("statusMessage")
+        if (message != null) {
+            when(defaultConfig.getString("statusType")) {
+                "Playing", "playing" -> Activity.playing(message)
+                "Watching", "watching" -> Activity.watching(message)
+                "Streaming", "streaming" -> Activity.streaming(message, defaultConfig.getString("statusStreamURL"))
+                "Listening", "listening" -> Activity.listening(message)
+                else -> null
+            }
+        } else null
+    } catch (e: ClassCastException) {
+        Bukkit.getLogger().severe("Type statusType or statusMessage is not a text (string). The plugin will continue to load.")
+        null
     }
 }

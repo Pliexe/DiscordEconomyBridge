@@ -1,7 +1,6 @@
 package me.pliexe.discordeconomybridge.discord
 
 import me.pliexe.discordeconomybridge.*
-import me.pliexe.discordeconomybridge.filemanager.Config
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.events.ReadyEvent
@@ -15,7 +14,7 @@ import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege
 import org.bukkit.Bukkit
 import org.bukkit.Server
 
-class Listener(val main: DiscordEconomyBridge, server: Server, config: Config) : ListenerAdapter() {
+class Listener(val main: DiscordEconomyBridge, server: Server) : ListenerAdapter() {
     private val logger = server.logger
 
     fun init() {
@@ -25,11 +24,16 @@ class Listener(val main: DiscordEconomyBridge, server: Server, config: Config) :
         logger.info("[Discord Economy Bridge Bot] Loading command Aliases!")
         main.commandHandler.loadAliases()
 
-        if(main.defaultConfig.isList("slashCommandServers"))
-            main.defaultConfig.getStringList("slashCommandServers").forEach { guildID ->
-                val guild = main.getJda()!!.getGuildById(guildID)
-                if(guild != null) registerSlashCommands(guild)
+        if(main.defaultConfig.contains("slashCommandServers")) {
+            try {
+                main.defaultConfig.getStringList("slashCommandServers").forEach { guildID ->
+                    val guild = main.getJda()!!.getGuildById(guildID)
+                    if(guild != null) registerSlashCommands(guild)
+                }
+            } catch (e: ClassCastException) {
+                main.logger.severe("Field \"slashCommandServers\" is of an invalid type, it must be an list of strings. The plugin will continue and ignore this configuration.")
             }
+        }
     }
 
     private fun registerSlashCommands(guild: Guild) {
@@ -110,12 +114,12 @@ class Listener(val main: DiscordEconomyBridge, server: Server, config: Config) :
                 {
                     if(embed.content == null || embed.content!!.isEmpty())
                     {
-                        val embed = DiscordEmbed(EmbedBuilder(), null)
+                        val embed2 = DiscordEmbed(EmbedBuilder(), null)
                             .setColor(0x00b806)
                             .setTitle("Account successfully linked to Discord!")
                             .setDescription("Your account has been linked to **${player.name}** (${player.uniqueId}).")
 
-                        event.channel.sendMessageEmbeds(embed.getNative().build()).queue()
+                        event.channel.sendMessageEmbeds(embed2.getNative().build()).queue()
                     }
                     else
                         event.channel.sendMessage(content!!).queue()

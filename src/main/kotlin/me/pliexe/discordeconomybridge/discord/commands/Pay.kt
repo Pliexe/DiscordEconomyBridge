@@ -27,8 +27,8 @@ class Pay(main: DiscordEconomyBridge): Command(main) {
         if(!main.linkHandler.isLinked(event.author.id))
             return fail(event, "Your discord account is not linked to minecraft!")
 
-        var reciever: DiscordMember
-        var amount: Double
+        val reciever: DiscordMember
+        val amount: Double
 
         if(event.isSlashCommand()) {
             reciever = event.getOptionMember("user") ?: return fail(event, "Unable to fetch member. Report bug to developer!")
@@ -49,6 +49,9 @@ class Pay(main: DiscordEconomyBridge): Command(main) {
 
             if(amount <= 0) return fail(event, "You may not send 0 or less money!")
         }
+
+        if(reciever.id == event.author.id)
+            return fail(event, "You may not send money to yourself!")
 
         val senderPlayer = Bukkit.getOfflinePlayer(main.linkHandler.getUuid(event.author.id))
 
@@ -73,7 +76,7 @@ class Pay(main: DiscordEconomyBridge): Command(main) {
         event.sendYMLEmbed("payMessage", {
             val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)
             setPlaceholdersForDiscordMessage(event.member!!, reciever, UniversalPlayer(senderPlayer), UniversalPlayer(recieverPlayer), form)
-                .replace("{amount}", formatMoney(amount, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                .replace("{amount}", formatMoney(amount, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
         }).queue()
     }
 }

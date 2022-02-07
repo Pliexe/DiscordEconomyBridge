@@ -64,7 +64,7 @@ class RemoveMoney(main: DiscordEconomyBridge): Command(main) {
             (if(event.member == null)
                 setPlaceholdersForDiscordMessage(event.author, player, form)
             else setPlaceholdersForDiscordMessage(event.member!!, player, form))
-                .replace("{amount_decrease}", formatMoney(amount, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                .replace("{amount_decrease}", formatMoney(amount, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
         }).queue()
     }
 }

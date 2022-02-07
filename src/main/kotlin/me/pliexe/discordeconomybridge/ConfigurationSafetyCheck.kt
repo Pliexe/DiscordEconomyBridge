@@ -1,18 +1,17 @@
 package me.pliexe.discordeconomybridge
 
-import me.pliexe.discordeconomybridge.filemanager.Config
-import java.util.*
+import me.pliexe.discordeconomybridge.discord.getString
 import java.util.logging.Logger
 import kotlin.collections.LinkedHashMap
 
-fun TokenCheck(main: DiscordEconomyBridge): Boolean {
+fun tokenCheck(main: DiscordEconomyBridge): Boolean {
     val defaultConfig = main.defaultConfig
     val logger = main.logger
 
-    if(!defaultConfig.isSet("TOKEN")) {
+    if(!defaultConfig.contains("TOKEN")) {
         logger.severe("TOKEN field missing from config.yml, disabling plugin...")
         return false
-    } else if(!defaultConfig.isString("TOKEN")) {
+    } else if(getString(defaultConfig.get("TOKEN")) == null) {
         logger.severe("TOKEN field is invalid type. It must be a text(string) in config.yml, disabling plugin...")
         return false
     }
@@ -20,36 +19,10 @@ fun TokenCheck(main: DiscordEconomyBridge): Boolean {
     return true
 }
 
-fun CheckForConfigurations(main: DiscordEconomyBridge): Boolean {
-    val defaultConfig = main.defaultConfig
-    val dMessageConfig = main.discordMessagesConfig
+fun checkForConfigurations(main: DiscordEconomyBridge): Boolean {
     val logger = main.logger
 
-    if(!defaultConfig.isString("PREFIX")) {
-        logger.severe("PREFIX field missing from config.yml, disabling plugin...")
-        return false
-    } else if(!defaultConfig.isString("PREFIX")) {
-        logger.severe("PREFIX field is invalid type. It must be a text(string) in config.yml, disabling plugin...")
-        return false
-    }
-
-    if(!defaultConfig.isString("Currency")) {
-        logger.severe("Currency field missing from config.yml, disabling plugin...")
-        return false
-    } else if(!defaultConfig.isString("Currency")) {
-        logger.severe("Currency field is invalid type. It must be a text(string) in config.yml, disabling plugin...")
-        return false
-    }
-
-    if(!defaultConfig.isSet("CurrencyLeftSide")) {
-        logger.severe("CurrencyLeftSide field missing from config.yml, disabling plugin...")
-        return false
-    } else if(!defaultConfig.isBoolean("CurrencyLeftSide")) {
-        logger.severe("CurrencyLeftSide field is invalid type. It must be a true or false (boolean) in config.yml, disabling plugin...")
-        return false
-    }
-
-    return checkForMessageConfig(dMessageConfig, logger)
+    return checkForMessageConfig(main.discordMessagesConfig, logger)
 }
 
 fun checkForMessageConfig(dMessageConfig: de.leonhard.storage.Config, logger: Logger): Boolean {
@@ -220,85 +193,86 @@ fun checkForMessageConfig(dMessageConfig: de.leonhard.storage.Config, logger: Lo
         return false
     }
 
-    if(!dMessageConfig.contains("blackjackCommandDealerWinEmbed")) {
-        logger.severe("blackjackCommandDealerWinEmbed is not set in discord_messages.yml")
+    if(!dMessageConfig.contains("rpsCommand.messages.challenge")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
         return false
-    } else if(!validateEmbed(dMessageConfig, "blackjackCommandDealerWinEmbed") )
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
     {
-        logger.severe("You don't have field, description or title set at blackjackCommandDealerWinEmbed.")
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
         return false
     }
 
-//    if(dMessageConfig.isSet("noPermissionMessage")) {
-//        logger.severe("noPermissionMessage is not set in discord_messages.yml")
-//        return false
-//    } else if(!validateEmbed(dMessageConfig, "noPermissionMessage"))
-//    {
-//        logger.severe("You don't have field, description or title set at noPermissionMessage. Restoring default description!")
-//        dMessageConfig.set("noPermissionMessage.description", "You don't have permission to run that command!")
-//    }
-//
-//    if(dMessageConfig.isSet("failMessage")) {
-//        logger.severe("failMessage is not set in discord_messages.yml")
-//        return false
-//    } else if(!validateEmbed(dMessageConfig, "failMessage"))
-//    {
-//        logger.severe("You don't have field, description or title set at failMessage. Restoring default fields and description!")
-//        dMessageConfig.set("failMessage.description", "❌ {message}")
-//        dMessageConfig.set("failMessage.fields.Usage.text", "%discord_command_prefix%%discord_command_name% %discord_command_usage%")
-//    }
-//
-//    if(dMessageConfig.isSet("addmoneyCommandEmbed")) {
-//        logger.severe("addmoneyCommandEmbed is not set in discord_messages.yml")
-//        return false
-//    } else if(!validateEmbed(dMessageConfig, "addmoneyCommandEmbed"))
-//    {
-//        logger.severe("You don't have field, description or title set at addmoneyCommandEmbed. Restoring default fields and description!")
-//        dMessageConfig.set("addmoneyCommandEmbed.description", "Added {amount_increase} to %player_name%'s balance")
-//    }
-//
-//    if(dMessageConfig.isSet("removemoneyCommandEmbed")) {
-//        logger.severe("removemoneyCommandEmbed is not set in discord_messages.yml")
-//        return false
-//    } else if(!validateEmbed(dMessageConfig, "removemoneyCommandEmbed"))
-//    {
-//        logger.severe("You don't have field, description or title set at removemoneyCommandEmbed. Restoring default fields and description!")
-//        dMessageConfig.set("removemoneyCommandEmbed.description", "Removed {amount_decrease} from %player_name%'s balance")
-//    }
-//
-//    if(dMessageConfig.isSet("balanceCommandEmbed")) {
-//        logger.severe("balanceCommandEmbed is not set in discord_messages.yml")
-//        return false
-//    } else if(!validateEmbed(dMessageConfig, "balanceCommandEmbed"))
-//    {
-//        logger.severe("You don't have field, description or title set at balanceCommandEmbed. Restoring default fields and description!")
-//        dMessageConfig.set("balanceCommandEmbed.fields.Username.text", "%player_name%")
-//        dMessageConfig.set("balanceCommandEmbed.fields.Username.inline", true)
-//
-//        dMessageConfig.set("balanceCommandEmbed.fields.Status.text", "%player_online%")
-//        dMessageConfig.set("balanceCommandEmbed.fields.Status.inline", true)
-//
-//        dMessageConfig.set("balanceCommandEmbed.fields.Balance.text", "%custom_vault_eco_balance%")
-//        dMessageConfig.set("balanceCommandEmbed.fields.Balance.inline", true)
-//    }
-//
-//    if(dMessageConfig.isSet("helpCommandEmbed")) {
-//        logger.severe("helpCommandEmbed is not set in discord_messages.yml")
-//        return false
-//    } else if(!validateEmbed(dMessageConfig, "helpCommandEmbed"))
-//    {
-//        logger.severe("You don't have field, description or title set at helpCommandEmbed. Disabling plugin!")
-//        return false
-//    }
-//
-//    if(dMessageConfig.isSet("leaderboardCommandEmbed")) {
-//        logger.severe("leaderboardCommandEmbed is not set in discord_messages.yml")
-//        return false
-//    } else if(!validateEmbed(dMessageConfig, "leaderboardCommandEmbed") )
-//    {
-//        logger.severe("You don't have field, description or title set at leaderboardCommandEmbed. Restoring default description!")
-//        dMessageConfig.set("leaderboardCommandEmbed.descriptionRepeat", "{index}# %player_name% - %custom_vault_eco_balance%")
-//    }
+    if(!dMessageConfig.contains("rpsCommand.messages.declined")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
+    {
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
+        return false
+    }
+
+    if(!dMessageConfig.contains("rpsCommand.messages.game")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
+    {
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
+        return false
+    }
+
+    if(!dMessageConfig.contains("rpsCommand.messages.gameBot")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
+    {
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
+        return false
+    }
+
+    if(!dMessageConfig.contains("rpsCommand.messages.gameOver")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
+    {
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
+        return false
+    }
+
+    if(!dMessageConfig.contains("rpsCommand.messages.draw")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
+    {
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
+        return false
+    }
+
+    if(!dMessageConfig.contains("rpsCommand.messages.gameOverBotPlayerWin")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
+    {
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
+        return false
+    }
+
+    if(!dMessageConfig.contains("rpsCommand.messages.gameOverBotPlayerLose")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
+    {
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
+        return false
+    }
+
+    if(!dMessageConfig.contains("rpsCommand.messages.drawBot")) {
+        logger.severe("rpsCommand.messages.challenge is not set in discord_messages.yml")
+        return false
+    } else if(!validateEmbed(dMessageConfig, "rpsCommand.messages.challenge") )
+    {
+        logger.severe("You don't have field, description or title set at rpsCommand.messages.challenge.")
+        return false
+    }
 
     return true
 }

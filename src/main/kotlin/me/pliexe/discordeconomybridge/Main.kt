@@ -13,8 +13,6 @@ import me.pliexe.discordeconomybridge.discord.LinkHandler
 import me.pliexe.discordeconomybridge.discord.handlers.CommandHandler
 import me.pliexe.discordeconomybridge.discord.registerClient
 import me.pliexe.discordeconomybridge.discordsrv.DiscordSRVListener
-import me.pliexe.discordeconomybridge.filemanager.ConfigManager
-import me.pliexe.discordeconomybridge.filemanager.DataConfig
 import net.dv8tion.jda.api.JDA
 import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
@@ -48,14 +46,21 @@ class DiscordEconomyBridge : JavaPlugin() {
         .addInputStream(getResource("discord_messages.yml"))
         .createConfig()
 
+    val defaultConfig: Config = LightningBuilder
+        .fromPath("config", dataFolder.path)
+        .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
+        .setReloadSettings(ReloadSettings.MANUALLY)
+        .addInputStream(getResource("config.yml"))
+        .createConfig()
 
 //    val pluginMessagesConfig = ConfigManager.getConfig("plugin_messages.yml", this, "plugin_messages.yml")
 
-    val defaultConfig = ConfigManager.getConfig("config.yml", this, "config.yml")
+//    val defaultConfig = ConfigManager.getConfig("config.yml", this, "config.yml")
     private val discordSrvListener = DiscordSRVListener(this)
     val commandHandler = CommandHandler(this)
     val linkHandler = LinkHandler(this)
     val pluginMessages = PluginMessages(this)
+    val pluginConfig = pluginConfig(this)
 
     var discordSRVActive: Boolean = false
     val botTag: String
@@ -85,6 +90,11 @@ class DiscordEconomyBridge : JavaPlugin() {
 
     override fun onEnable() {
 
+        if(!checkForConfigurations(this)) {
+            server.pluginManager.disablePlugin(this)
+            return
+        }
+
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null)
             placeholderApiEnabled = true
 
@@ -92,30 +102,21 @@ class DiscordEconomyBridge : JavaPlugin() {
 
         discordSRVActive = Bukkit.getPluginManager().getPlugin("DiscordSRV") != null
 
-        if((if(defaultConfig.isBoolean("independent")) !defaultConfig.getBoolean("independent") else true) && discordSRVActive)
-        {
-            discordSrvEnabled = true
 
-            if(defaultConfig.isSet("TOKEN") && defaultConfig.isString("TOKEN") && (defaultConfig.getString("TOKEN") != DiscordSRV.config().getString("BotToken")))
-                logger.info("Found DiscordSRV. If you want to run this plugin independently then enable \"independent\" in config.yml")
-        } else if(!TokenCheck(this)) {
-            server.pluginManager.disablePlugin(this)
-            return
+        try {
+            if(!defaultConfig.getOrDefault("independent", false) && discordSRVActive) {
+                discordSrvEnabled = true
+
+                if(defaultConfig.contains("TOKEN") && defaultConfig.getString("TOKEN") != DiscordSRV.config().getString("BotToken"))
+                    logger.info("Found DiscordSRV. If you want to run this plugin independently then enable \"independent\" in config.yml")
+            } else if(!tokenCheck(this)) {
+                server.pluginManager.disablePlugin(this)
+                return
+            }
+        } catch (e: ClassCastException) {
+            logger.severe("Config field: independent is of invalid type. The bot will continue to load.")
         }
 
-        if(!CheckForConfigurations(this)) {
-            server.pluginManager.disablePlugin(this)
-            return
-        }
-
-//        if(!discordSrvEnabled)
-//        {
-            DataConfig.setup()
-            DataConfig.get().options().copyDefaults(true)
-            DataConfig.save()
-//        }
-
-//        usersManager.LoadFromConfig()
         moderatorManager.LoadFromConfig()
 
         if(!setupEconomy()) {
@@ -129,12 +130,6 @@ class DiscordEconomyBridge : JavaPlugin() {
         {
             DiscordSRV.api.subscribe(discordSrvListener)
         } else {
-            if(!defaultConfig.isString("TOKEN")) {
-                server.consoleSender.sendMessage("${ChatColor.RED}${ChatColor.BOLD}TOKEN was not found! Disabling plugin!")
-                pluginLoader.disablePlugin(this)
-                return
-            }
-
             val token = defaultConfig.getString("TOKEN")
 
             if(token == "BOT_TOKEN")

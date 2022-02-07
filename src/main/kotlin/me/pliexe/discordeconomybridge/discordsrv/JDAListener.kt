@@ -21,11 +21,16 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
         logger.info("[Discord Economy Bridge Bot] Loading command Aliases!")
         main.commandHandler.loadAliases()
 
-        if(main.defaultConfig.isList("slashCommandServers"))
-            main.defaultConfig.getStringList("slashCommandServers").forEach { guildID ->
-                val guild = DiscordSRV.getPlugin().jda.getGuildById(guildID)
-                if(guild != null) registerSlashCommands(guild)
+        if(main.defaultConfig.contains("slashCommandServers")) {
+            try {
+                main.defaultConfig.getStringList("slashCommandServers").forEach { guildID ->
+                    val guild = DiscordSRV.getPlugin().jda.getGuildById(guildID)
+                    if(guild != null) registerSlashCommands(guild)
+                }
+            } catch (e: ClassCastException) {
+                main.logger.severe("Field \"slashCommandServers\" is of an invalid type, it must be an list of strings. The plugin will continue and ignore this configuration.")
             }
+        }
     }
 
     private fun registerSlashCommands(guild: Guild) {

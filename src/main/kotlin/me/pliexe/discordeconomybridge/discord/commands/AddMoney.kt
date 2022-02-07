@@ -65,7 +65,7 @@ class AddMoney(main: DiscordEconomyBridge): Command(main) {
             (if(event.member == null)
                 setPlaceholdersForDiscordMessage(event.author, player, form)
             else setPlaceholdersForDiscordMessage(event.member!!, player, form))
-                .replace("{amount_increase}", formatMoney(amount, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
+                .replace("{amount_increase}", formatMoney(amount, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
         }).queue()
     }
 }
