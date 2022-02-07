@@ -20,6 +20,7 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
         return CommandOptions()
     }
 
+
     override fun run(event: CommandEventData) {
         if(main.server.offlinePlayers.isEmpty() && main.server.onlinePlayers.isEmpty())
             return fail(event, "There is no one to show on the leaderboard!")
@@ -34,13 +35,13 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
 
 //                getEmbedFromYml(config, "leaderboardCommandEmbed", text -> "hi", )
 
-        val embedNameTemplate = if(main.discordMessagesConfig.isString("leaderboardCommandEmbed.fieldRepeatName")) config.getString("leaderboardCommandEmbed.fieldRepeatName") else null
-        val embedValueTemplate = if(main.discordMessagesConfig.isString("leaderboardCommandEmbed.fieldRepeatValue")) config.getString("leaderboardCommandEmbed.fieldRepeatValue") else null
-        val inline = if(main.discordMessagesConfig.isBoolean("leaderboardCommandEmbed.fieldRepeatInline")) config.getBoolean("leaderboardCommandEmbed.fieldRepeatInline") else false
+        val embedNameTemplate = getString(main.discordMessagesConfig!!.get("leaderboardCommandEmbed.fieldRepeatName"))
+        val embedValueTemplate = getStringOrStringList("leaderboardCommandEmbed.fieldRepeatValue", main.discordMessagesConfig!!)
+        val inline = getBool("leaderboardCommandEmbed.fieldRepeatInline") ?: false
 
         val embedCanBeSet = embedNameTemplate != null && embedValueTemplate != null
 
-        val descCanBeSet = main.discordMessagesConfig.isString("leaderboardCommandEmbed.descriptionRepeat")
+        val descCanBeSet = getStringOrStringList("leaderboardCommandEmbed.descriptionRepeat", main.discordMessagesConfig!!) != null
 
         if(!embedCanBeSet && !descCanBeSet)
             return fail(event,"Invalid yaml configuration. Either description or embed field must be set!")
@@ -68,7 +69,7 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
                 if(text == null)
                     text = ArrayList()
 
-                text.add(Placeholders(main.discordMessagesConfig.getString("leaderboardCommandEmbed.descriptionRepeat"), index, players[index].player))
+                text.add(Placeholders(main.discordMessagesConfig!!.getString("leaderboardCommandEmbed.descriptionRepeat"), index, players[index].player))
             }
 
             if(embedCanBeSet) {
@@ -82,7 +83,7 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
 
         if(!text.isNullOrEmpty()) embed.setDescription(text.joinToString("\n"))
 
-        event.sendEmbed(embed)
+        event.sendMessage(embed).queue()
     }
 }
 

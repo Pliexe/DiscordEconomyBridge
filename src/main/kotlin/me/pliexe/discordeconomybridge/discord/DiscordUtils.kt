@@ -2,6 +2,8 @@ package me.pliexe.discordeconomybridge.discord
 
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.clip.placeholderapi.PlaceholderAPI
+import me.pliexe.discordeconomybridge.filemanager.Config
+import me.pliexe.discordeconomybridge.isConfigSection
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
@@ -13,6 +15,24 @@ val regexScriptValidate = Regex("^[^?]+\\?[^:]+:[^:]+\$")
 // I had to sacrifice 80 babies to the blood god to make these regex patterns
 //val regexScriptValidateString = Regex("^([^?]+)\\?( +|)\"[^\"]+\"( +|):( +|)\"[^\"]+(\"( +|))\$")
 // Matches any patter that is: condition ? "word" : "word"
+
+fun sendWrongUserInteractionMessage(interactionEvent: ComponentInteractionEvent) {
+    val embed = interactionEvent.getYMLEmbed("onWrongClickMessage", {
+        if(interactionEvent.member == null)
+            setDiscordPlaceholders(interactionEvent.user, it)
+        else setDiscordPlaceholders(interactionEvent.member!!, it)
+    })
+
+    val content = embed.content?.let {
+        if(interactionEvent.member == null)
+            setDiscordPlaceholders(interactionEvent.user, it)
+        else setDiscordPlaceholders(interactionEvent.member!!, it)
+    }
+
+    if(embed.isEmpty)
+        interactionEvent.replyEphemeral(content ?: "Message not configured! Path: onWrongClickMessage").queue()
+    else interactionEvent.replyEphemeral(embed).setContent(content).queue()
+}
 
 class UniversalPlayer(
     val onlinePlayer: Player?,
@@ -87,8 +107,15 @@ fun setPlaceholdersAlternative(player: OfflinePlayer, text: String): String {
 fun setPlaceholdersAlternative(player: UniversalPlayer, text: String): String {
     return text
         .replace("%player_name%", player.name)
-        .replace("%player_uuid", player.uniqueId.toString())
+        .replace("%player_uuid%", player.uniqueId.toString())
         .replace("%player_online%", if(player.isOnline) "online" else "offline")
+}
+
+fun setPlaceholdersOther(player: UniversalPlayer, text: String): String {
+    return text
+        .replace("%player_other_name%", player.name)
+        .replace("%player_other_uuid%", player.uniqueId.toString())
+        .replace("%player_other_online%", if(player.isOnline) "online" else "offline")
 }
 
 fun setPlaceholdersForDiscordMessage(member: DiscordMember, player: OfflinePlayer, text: String): String {
@@ -111,9 +138,32 @@ fun setPlaceholdersForDiscordMessage(user: DiscordUser, player: UniversalPlayer,
     else setPlaceholdersAlternative(player, setDiscordPlaceholders(user, text))
 }
 
+fun setPlaceholdersForDiscordMessage(member: DiscordMember, other: DiscordMember, player: UniversalPlayer, text: String): String {
+    return if(DiscordEconomyBridge.placeholderApiEnabled)
+        player.setPlaceholderAPI(setDiscordPlaceholders(member, other, text))
+    else setPlaceholdersAlternative(player, setDiscordPlaceholders(member, text))
+}
+
+fun setPlaceholdersForDiscordMessage(member: DiscordMember, other: DiscordMember, player: UniversalPlayer, otherPlayer: UniversalPlayer, text: String): String {
+    return setPlaceholdersOther(otherPlayer, if(DiscordEconomyBridge.placeholderApiEnabled)
+        player.setPlaceholderAPI(setDiscordPlaceholders(member, other, text))
+    else setPlaceholdersAlternative(player, setDiscordPlaceholders(member, other, text)))
+}
+
+fun setPlaceholdersForDiscordMessage(user: DiscordUser, other: DiscordUser, player: UniversalPlayer, text: String): String {
+    return if(DiscordEconomyBridge.placeholderApiEnabled)
+        player.setPlaceholderAPI(setDiscordPlaceholders(user, other, text))
+    else setPlaceholdersAlternative(player, setDiscordPlaceholders(user, other, text))
+}
+
 fun setDiscordPlaceholders(member: DiscordMember, text: String): String {
     return setDiscordPlaceholders(member.user, text)
-        .replace("%discord_member_nickname", member.nickname ?: member.user.name)
+        .replace("%discord_member_nickname%", member.nickname ?: member.user.name)
+}
+
+fun setDiscordPlaceholders(member: DiscordMember, other: DiscordMember, text: String): String {
+    return setDiscordPlaceholders(member.user, other.user, text)
+        .replace("%discord_other_member_nickname%", other.nickname ?: other.user.name)
 }
 
 fun setDiscordPlaceholders(user: DiscordUser, text: String): String {
@@ -121,7 +171,17 @@ fun setDiscordPlaceholders(user: DiscordUser, text: String): String {
         .replace("%discord_user_username%", user.name)
         .replace("%discord_user_discriminator%", user.discriminator)
         .replace("%discord_user_tag%", user.asTag)
-        .replace("%discord_user_avatar_url", user.avatarUrl)
+        .replace("%discord_user_avatar_url%", user.avatarUrl)
+        .replace("%discord_user_id%", user.avatarUrl)
+}
+
+fun setDiscordPlaceholders(user: DiscordUser, other: DiscordUser, text: String): String {
+    return setDiscordPlaceholders(user, text)
+        .replace("%discord_other_user_username%", other.name)
+        .replace("%discord_other_user_discriminator%", other.discriminator)
+        .replace("%discord_other_user_tag%", other.asTag)
+        .replace("%discord_other_user_avatar_url%", other.avatarUrl)
+        .replace("%discord_other_user_id%", other.avatarUrl)
 }
 
 fun setCommandPlaceholders(text: String, prefix: String, commandName: String, description: String, usage: String): String {
@@ -168,68 +228,123 @@ fun setCommandPlaceholders(text: String, prefix: String, commandName: String, de
 //    GetYmlEmbed()
 //}
 
+fun getStringOrStringList(path: String, config: de.leonhard.storage.Config): String? {
+    return getStringOrStringList(config.get(path))
+}
+
+fun getStringOrStringList(value: Any?): String? {
+    return when (value) {
+        is String -> return value
+        is List<*> -> return value.joinToString("\n")
+        else -> null
+    }
+}
+
+fun getString(value: Any?): String? {
+    return when(value) {
+        is String -> return value
+        else -> null
+    }
+}
+
+fun getInt(value: Any?): Int? {
+    return if(value is Int) value
+    else null
+}
+
+fun getBool(value: Any?): Boolean? {
+    return if(value is Boolean) return value
+    else null
+}
+
 fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
     val config = main.discordMessagesConfig
 
-    if(!config.isConfigurationSection(path))
+    if(!config!!.contains(path))
         throw Error("Missing path configuration ($path) in discord_messages.yml!")
 
-    if(config.isString("$path.title")) embed.setTitle(filter(config.getString("$path.title")))
+    if(!isConfigSection(config!!.get(path)))
+        throw Error("Invalid configuration type ($path) in discord_messages.yml!")
 
-    if(config.isConfigurationSection("$path.fields"))
+    getStringOrStringList("$path.title", config)?.let { embed.setTitle(filter(it)) }
+
+    if(isConfigSection(config!!.get("$path.fields")))
     {
-        val embedFields = config.getConfigurationSection("$path.fields").getKeys(false)
+        val embedFields = config!!.singleLayerKeySet("$path.fields")
 
         embedFields.forEach { fieldName ->
-            if(config.isSet("$path.fields.$fieldName.text")) {
-                embed.addField(
-                    filter(fieldName),
-                    when {
-                        config.isString("$path.fields.$fieldName.text") -> filter(config.getString("$path.fields.$fieldName.text"))
-                        config.isList("$path.fields.$fieldName.text") -> config.getStringList("$path.fields.$fieldName.text").joinToString("\n") { filter(it) }
-                        else -> "Invalid yaml configuration!"
-                    }, config.getBoolean("$path.fields.$fieldName.inline"))
+            try {
+                getStringOrStringList("$path.fields.$fieldName.text", config)?.let {
+                    embed.addField(
+                        filter(fieldName),
+                        filter(it),
+                        config!!.get("$path.fields.$fieldName.inline", false)
+                    )
+                }
+            } catch (e: ClassCastException) {
+                main.logger.severe("Invalid embed field configuration at $path.fields.$fieldName.text")
+                throw Error("InvalidConfig")
             }
         }
     }
 
-    if(config.isInt("$path.color"))
-        embed.setColor(config.getInt("$path.color"))
-    else if(config.isString("$path.color")) {
-        val value = config.getString("$path.color")
-        if(resolveScript != null && regexScriptValidate.matches(value))
-        {
-            val endOfCond = value.indexOf("?")
-            val condition = value.substring(0, endOfCond).trim()
+    getInt(config.get("$path.color"))?.let { embed.setColor(it) } ?: run {
+        try {
+            val value = config.getString("$path.color")
 
-            if(resolveScript(condition))
-                embed.setColor(Color.decode(value.substring(endOfCond + 1, value.indexOf(':')).trim()))
-            else embed.setColor(Color.decode(value.substring(value.indexOf(':') + 1).trim()))
-        } else embed.setColor(Color.decode(config.getString("$path.color")))
+            if(value != null && value.isNotEmpty()) {
+                if(resolveScript != null && regexScriptValidate.matches(value)) {
+                    val endOfCond = value.indexOf("?")
+                    val condition = value.substring(0, endOfCond).trim()
+
+                    if(resolveScript(condition))
+                        embed.setColor(Color.decode(value.substring(endOfCond + 1, value.indexOf(':')).trim()))
+                    else embed.setColor(Color.decode(value.substring(value.indexOf(':') + 1).trim()))
+                } else embed.setColor(Color.decode(value))
+            }
+        } catch (e: ClassCastException) {
+            main.server.logger.severe("Invalid embed color configuration at $path.color!")
+            throw Error("InvalidConfig")
+        }
     }
 
-    if(!ignoreDescription && config.isString("$path.description")) embed.setDescription(filter(config.getString("$path.description")))
-    else if(!ignoreDescription && config.isList("$path.description")) embed.setDescription(config.getStringList("$path.description").joinToString("\n") { filter(it) })
+    if(!ignoreDescription)
+        getStringOrStringList("$path.description", config)?.let {
+            embed.setDescription(filter(it))
+        }
 
-    if(config.isString("$path.footer.text")) {
-        if(config.isString("$path.footer.icon_url")) embed.setFooter(filter(config.getString("$path.footer.text")), config.getString("$path.footer.icon_url"))
-        else embed.setFooter(filter(config.getString("$path.footer.text")))
+    try {
+        if(isConfigSection(config.get("$path.footer"))) {
+            getStringOrStringList("$path.footer.text", config)?.let {
+                embed.setFooter(filter(it), getString(config.get("$path.footer.icon_url")))
+            }
+        }
+    } catch (e: ClassCastException) {
+        main.server.logger.severe("Invalid embed footer configuration! $path.footer")
+        throw Error("InvalidConfig")
     }
 
-    if(config.isString("$path.image")) {
-        embed.setImage(config.getString("$path.image"))
+    getString(config!!.get("$path.image"))?.let {
+        embed.setImage(it)
     }
 
-    if(config.isString("$path.thumbnail")) {
-        embed.setThumbnail(config.getString("$path.thumbnail"))
+    getString(config!!.get("$path.thumbnail"))?.let {
+        embed.setThumbnail(it)
     }
 
-    if(config.isString("$path.author.name")) {
-        embed.setAuthor(
-            config.getString("$path.author.name"),
-            if(config.isString("$path.author.url")) config.getString("$path.author.url") else null,
-            if(config.isString("$path.author.icon_url")) config.getString("$path.author.icon_url") else null
-        )
+    try {
+        if(isConfigSection(config!!.get("$path.author"))) {
+            getStringOrStringList("$path.author.name", config)?.let {
+                embed.setFooter(filter(it), config!!.getString("$path.author.icon_url"))
+            }
+        }
+    } catch (e: ClassCastException) {
+        main.server.logger.severe("Invalid embed author configuration! $path.author")
+        throw Error("InvalidConfig")
+    }
+
+    getStringOrStringList("$path.content", config)?.let {
+        embed.content = it
     }
 
     return embed

@@ -1,10 +1,14 @@
 package me.pliexe.discordeconomybridge
 
 import de.leonhard.storage.Config
-import de.leonhard.storage.Json
 import de.leonhard.storage.LightningBuilder
 import de.leonhard.storage.internal.settings.ConfigSettings
+import de.leonhard.storage.internal.settings.ReloadSettings
 import github.scarsz.discordsrv.DiscordSRV
+import me.pliexe.discordeconomybridge.commands.ClearSlashCommands
+import me.pliexe.discordeconomybridge.commands.HelpCommand
+import me.pliexe.discordeconomybridge.commands.LinkCommand
+import me.pliexe.discordeconomybridge.commands.UnlinkCommand
 import me.pliexe.discordeconomybridge.discord.LinkHandler
 import me.pliexe.discordeconomybridge.discord.handlers.CommandHandler
 import me.pliexe.discordeconomybridge.discord.registerClient
@@ -26,16 +30,44 @@ class DiscordEconomyBridge : JavaPlugin() {
 
     private var jda: JDA? = null
     private var econ: Economy? = null
-    val usersManager: UsersManager = UsersManager()
+//    val usersManager: UsersManager = UsersManager()
     val moderatorManager = ModeratorManager(this)
-    val discordMessagesConfig = ConfigManager.getConfig("discord_messages.yml", this, "discord_messages.yml")
+//    val discordMessagesConfig = ConfigManager.getConfig("discord_messages.yml", this, "discord_messages.yml")
+
+    val pluginMessagesConfig: Config = LightningBuilder
+        .fromPath("plugin_messages", dataFolder.path)
+        .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
+        .setReloadSettings(ReloadSettings.MANUALLY)
+        .addInputStream(getResource("plugin_messages.yml"))
+        .createConfig()
+
+    val discordMessagesConfig: Config = LightningBuilder
+        .fromPath("discord_messages", dataFolder.path)
+        .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
+//        .setReloadSettings(ReloadSettings.MANUALLY)
+        .addInputStream(getResource("discord_messages.yml"))
+        .createConfig()
+
+
+//    val pluginMessagesConfig = ConfigManager.getConfig("plugin_messages.yml", this, "plugin_messages.yml")
+
     val defaultConfig = ConfigManager.getConfig("config.yml", this, "config.yml")
     private val discordSrvListener = DiscordSRVListener(this)
     val commandHandler = CommandHandler(this)
     val linkHandler = LinkHandler(this)
+    val pluginMessages = PluginMessages(this)
+
+    var discordSRVActive: Boolean = false
+    val botTag: String
+        get() {
+            return if(jda == null)
+                DiscordSRV.getPlugin().jda.selfUser.asTag
+            else jda!!.selfUser.asTag
+        }
 
     /*fun getJda(): JDA { return jda!! }*/
     fun getEconomy(): Economy { return econ!! }
+    fun getJda(): JDA? { return jda }
 
     private fun setupEconomy(): Boolean {
         if(server.pluginManager.getPlugin("Vault") == null) {
@@ -53,21 +85,14 @@ class DiscordEconomyBridge : JavaPlugin() {
 
     override fun onEnable() {
 
-//        val test = ("test.yml", "plugins/Test")
-
-        val test = Json("test", "plugins/Test")
-        test.set("Hi", 69)
-
-        test.set("TestingHEllo.wo", "WORKS")
-        test.set("TestingHEllo.Yo", 69)
-
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null)
             placeholderApiEnabled = true
 
 //        logger.info("TOKEN IS ${defaultConfig.getString("TOKEN")} : EXISTS: ${defaultConfig.isSet("TOKEN")}")
 
+        discordSRVActive = Bukkit.getPluginManager().getPlugin("DiscordSRV") != null
 
-        if((if(defaultConfig.isBoolean("independent")) !defaultConfig.getBoolean("independent") else true) && Bukkit.getPluginManager().getPlugin("DiscordSRV") != null)
+        if((if(defaultConfig.isBoolean("independent")) !defaultConfig.getBoolean("independent") else true) && discordSRVActive)
         {
             discordSrvEnabled = true
 
@@ -90,7 +115,7 @@ class DiscordEconomyBridge : JavaPlugin() {
             DataConfig.save()
 //        }
 
-        usersManager.LoadFromConfig()
+//        usersManager.LoadFromConfig()
         moderatorManager.LoadFromConfig()
 
         if(!setupEconomy()) {
@@ -119,9 +144,22 @@ class DiscordEconomyBridge : JavaPlugin() {
                 return
             }
 
+            linkHandler.initNative()
+
             jda = registerClient(this, defaultConfig, token)
-            if(jda == null) return
+            if(jda == null) {
+                server.consoleSender.sendMessage("Couldn't start discord client!")
+                pluginLoader.disablePlugin(this)
+                return
+            }
+            jda!!.awaitReady()
+
+            getCommand("unlinkdiscord").executor = UnlinkCommand(this)
+            getCommand("linkdiscord").executor = LinkCommand(this)
+            getCommand("clearslashcommands").executor = ClearSlashCommands(this)
         }
+
+        getCommand("discordeconomybridge").executor = HelpCommand(this)
     }
 
     override fun onDisable() {

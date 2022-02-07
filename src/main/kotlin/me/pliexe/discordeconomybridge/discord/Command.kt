@@ -3,15 +3,19 @@ package me.pliexe.discordeconomybridge.discord
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import net.dv8tion.jda.api.EmbedBuilder
+import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.entities.Emoji
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.User
 import net.dv8tion.jda.api.events.interaction.GenericComponentInteractionCreateEvent
+import net.dv8tion.jda.api.events.message.MessageDeleteEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
+import net.dv8tion.jda.api.interactions.InteractionHook
 import net.dv8tion.jda.api.interactions.commands.OptionType
 import net.dv8tion.jda.api.interactions.commands.build.CommandData
 import net.dv8tion.jda.api.requests.restaction.MessageAction
+import net.dv8tion.jda.api.requests.restaction.WebhookMessageUpdateAction
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyAction
 import net.dv8tion.jda.api.requests.restaction.interactions.UpdateInteractionAction
 import org.bukkit.Server
@@ -65,11 +69,114 @@ class DiscordMember(
     val id: String
         get() = memberNative?.id ?: memberSRV!!.id
 
-    val nickname: String
-        get() = memberNative?.nickname ?: memberSRV!!.id
+    val nickname: String?
+        get() = memberNative?.nickname ?: memberSRV?.nickname
 
     val user: DiscordUser
         get() = if(memberNative == null) DiscordUser(memberSRV!!.user) else DiscordUser(memberNative.user)
+
+    val isOwner: Boolean
+        get() = memberNative?.isOwner ?: memberSRV!!.isOwner
+
+    fun isAdministrator(): Boolean {
+        return memberNative?.hasPermission(Permission.ADMINISTRATOR)
+            ?: memberSRV!!.hasPermission(github.scarsz.discordsrv.dependencies.jda.api.Permission.ADMINISTRATOR)
+    }
+
+    fun rolesContain(roleID: String): Boolean{
+        return memberNative?.roles?.contains(roleID) ?: memberSRV!!.roles.contains(roleID)
+    }
+}
+
+class EditOriginalMessageAction(
+    val type: Type,
+    val main: DiscordEconomyBridge,
+    val editOriginalNative: WebhookMessageUpdateAction<net.dv8tion.jda.api.entities.Message>?,
+    val editOriginalSRV: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.WebhookMessageUpdateAction<github.scarsz.discordsrv.dependencies.jda.api.entities.Message>?
+) {
+    enum class Type {
+        editOriginalNative,
+        editOriginalSRV
+    }
+
+    constructor(editOriginalNative: WebhookMessageUpdateAction<net.dv8tion.jda.api.entities.Message>, main: DiscordEconomyBridge) : this(Type.editOriginalNative, main, editOriginalNative, null)
+    constructor(editOriginalSRV: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.WebhookMessageUpdateAction<github.scarsz.discordsrv.dependencies.jda.api.entities.Message>, main: DiscordEconomyBridge) : this(Type.editOriginalSRV, main, null, editOriginalSRV)
+
+    fun queue(done: ((message: Message) -> Unit)) {
+        when(type) {
+            Type.editOriginalNative -> editOriginalNative!!.queue { done(Message(it, main)) }
+            Type.editOriginalSRV -> editOriginalSRV!!.queue { done(Message(it, main)) }
+        }
+    }
+
+    fun queue() {
+        when(type) {
+            Type.editOriginalNative -> editOriginalNative!!.queue()
+            Type.editOriginalSRV -> editOriginalSRV!!.queue()
+        }
+    }
+
+    fun setContent(content: String?): EditOriginalMessageAction {
+        when(type) {
+            Type.editOriginalNative -> editOriginalNative!!.setContent(content)
+            Type.editOriginalSRV -> editOriginalSRV!!.setContent(content)
+        }
+        return this
+    }
+
+    fun setActionRow(buttons: List<Button>): EditOriginalMessageAction {
+        when(type) {
+            Type.editOriginalNative -> editOriginalNative!!.setActionRow(buttons.map { it.getNative() })
+            Type.editOriginalSRV -> editOriginalSRV!!.setActionRow(buttons.map { it.getSRV() })
+        }
+        return this
+    }
+
+    fun removeActinRows(): EditOriginalMessageAction {
+        when(type) {
+            Type.editOriginalNative -> editOriginalNative!!.setActionRows()
+            Type.editOriginalSRV -> editOriginalSRV!!.setActionRows()
+        }
+        return this
+    }
+
+    fun setYesOrNoButtons(yesLabel: String, noLabel: String): EditOriginalMessageAction {
+        setActionRow(mutableListOf(
+            Button.success("yes", yesLabel),
+            Button.danger("no", noLabel)
+        ))
+        return this
+    }
+}
+
+class InteractionHook(
+    val interactionNative: InteractionHook?,
+    val interactionSRV: github.scarsz.discordsrv.dependencies.jda.api.interactions.InteractionHook?,
+    val main: DiscordEconomyBridge
+) {
+    constructor(event: InteractionHook, main: DiscordEconomyBridge) : this(event, null, main)
+    constructor(event: github.scarsz.discordsrv.dependencies.jda.api.interactions.InteractionHook, main: DiscordEconomyBridge) : this(null, event, main)
+
+    fun retrieveOriginal(done: (message: Message) -> Unit) {
+        return if(interactionNative == null)
+            interactionSRV!!.retrieveOriginal().queue { done(Message(it, main)) }
+        else interactionNative.retrieveOriginal().queue  { done(Message(it, main)) }
+    }
+
+    fun editMessage(content: String): EditOriginalMessageAction {
+        return if(interactionNative == null)
+            EditOriginalMessageAction(interactionSRV!!.editOriginal(content), main)
+        else EditOriginalMessageAction(interactionNative.editOriginal(content), main)
+    }
+
+    fun editMessage(embed: DiscordEmbed): EditOriginalMessageAction {
+        if(embed.isEmpty)
+            return editMessage(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+
+        return if(interactionNative == null)
+            EditOriginalMessageAction(interactionSRV!!.editOriginalEmbeds(embed.getSRV().build()).setContent(embed.content), main)
+                else EditOriginalMessageAction(interactionNative.editOriginalEmbeds(embed.getNative().build()).setContent(embed.content), main)
+    }
 }
 
 class MessageAction(val type: Type,
@@ -79,7 +186,7 @@ class MessageAction(val type: Type,
                     val replyActionNative: ReplyAction?,
                     val replyActionSRV: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.interactions.ReplyAction?,
                     val updateInteractionActionNative: UpdateInteractionAction?,
-                    val updateInteractionActionSRV: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.interactions.UpdateInteractionAction?
+                    val updateInteractionActionSRV: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.interactions.UpdateInteractionAction?,
                     ) {
     var buttons: List<Button>? = null
 
@@ -95,21 +202,30 @@ class MessageAction(val type: Type,
     constructor(_messageAction: MessageAction, main: DiscordEconomyBridge) : this(Type.NativeCommand, main, _messageAction, null, null, null, null, null)
     constructor(_messageAction: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.MessageAction, main: DiscordEconomyBridge) : this(Type.SRVCommand, main,null, _messageAction, null, null, null, null)
 
-    constructor(_replyAction: ReplyAction, main: DiscordEconomyBridge) : this(Type.NativeCommand, main,null, null, _replyAction, null, null, null)
+    constructor(_replyAction: ReplyAction, main: DiscordEconomyBridge) : this(Type.NativeSlashCommand, main,null, null, _replyAction, null, null, null)
     constructor(_replyAction: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.interactions.ReplyAction, main: DiscordEconomyBridge) : this(Type.SRVSlashCommand, main,null, null, null, _replyAction, null, null)
 
     constructor(_updateInteractionAction: UpdateInteractionAction, main: DiscordEconomyBridge) : this(Type.UpdateInteractionActionNative, main, null, null, null, null, _updateInteractionAction, null)
-    constructor(_updateInteractionSRV: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.interactions.UpdateInteractionAction, main: DiscordEconomyBridge) : this(Type.UpdateInteractionActionNative, main, null, null, null, null, null, _updateInteractionSRV)
-
+    constructor(_updateInteractionSRV: github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.interactions.UpdateInteractionAction, main: DiscordEconomyBridge) : this(Type.UpdateInteractionActionSRV, main, null, null, null, null, null, _updateInteractionSRV)
 
     fun queue(done: ((message: Message) -> Unit)) {
         when (type) {
             Type.NativeCommand -> messageActionNative!!.queue { done(Message(it, main)) }
             Type.SRVCommand -> messageActionSRV!!.queue { done(Message(it, main)) }
-            Type.NativeSlashCommand -> replyActionNative!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { Message(it, main) } }
-            Type.SRVSlashCommand -> replyActionSRV!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { Message(it, main) } }
-            Type.UpdateInteractionActionNative -> updateInteractionActionNative!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { Message(it, main)} }
-            Type.UpdateInteractionActionSRV -> updateInteractionActionSRV!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { Message(it, main)} }
+            Type.NativeSlashCommand -> replyActionNative!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { done(Message(it, main)) } }
+            Type.SRVSlashCommand -> replyActionSRV!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { done(Message(it, main)) } }
+            Type.UpdateInteractionActionNative -> updateInteractionActionNative!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { done(Message(it, main))} }
+            Type.UpdateInteractionActionSRV -> updateInteractionActionSRV!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { done(Message(it, main))} }
+        }
+    }
+
+    fun queue(done: ((message: Message, interactionHook: me.pliexe.discordeconomybridge.discord.InteractionHook) -> Unit)) {
+        when (type) {
+            Type.NativeSlashCommand -> replyActionNative!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { done(Message(it, main), InteractionHook(interactionHook, main)) } }
+            Type.SRVSlashCommand -> replyActionSRV!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { done(Message(it, main), InteractionHook(interactionHook, main)) } }
+            Type.UpdateInteractionActionNative -> updateInteractionActionNative!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { done(Message(it, main), InteractionHook(interactionHook, main))} }
+            Type.UpdateInteractionActionSRV -> updateInteractionActionSRV!!.queue { interactionHook -> interactionHook.retrieveOriginal().queue { done(Message(it, main), InteractionHook(interactionHook, main))} }
+            else -> throw Error("This method may only be used for interactions! Dev only note. Please report this bug to the dev")
         }
     }
 
@@ -136,14 +252,14 @@ class MessageAction(val type: Type,
         return this
     }
 
-    fun setActionRow(buttons: List<Button>? = null): me.pliexe.discordeconomybridge.discord.MessageAction {
+    fun setActionRow(buttons: List<Button>): me.pliexe.discordeconomybridge.discord.MessageAction {
         when (type) {
-            Type.NativeCommand -> messageActionNative!!.setActionRows()
-            Type.SRVCommand -> TODO()
-            Type.NativeSlashCommand -> TODO()
-            Type.SRVSlashCommand -> TODO()
-            Type.UpdateInteractionActionNative -> TODO()
-            Type.UpdateInteractionActionSRV -> TODO()
+            Type.NativeCommand -> messageActionNative!!.setActionRow(buttons.map { it.getNative() })
+            Type.SRVCommand -> messageActionSRV!!.setActionRow(buttons.map { it.getSRV() })
+            Type.NativeSlashCommand -> replyActionNative!!.addActionRow(buttons.map { it.getNative() })
+            Type.SRVSlashCommand -> replyActionSRV!!.addActionRow(buttons.map { it.getSRV() })
+            Type.UpdateInteractionActionNative -> updateInteractionActionNative!!.setActionRow(buttons.map { it.getNative() })
+            Type.UpdateInteractionActionSRV -> updateInteractionActionSRV!!.setActionRow(buttons.map { it.getSRV() })
         }
         return this
     }
@@ -159,17 +275,26 @@ class MessageAction(val type: Type,
         }
         return this
     }
+
+    fun setYesOrNoButtons(yesLabel: String, noLabel: String): me.pliexe.discordeconomybridge.discord.MessageAction {
+        setActionRow(mutableListOf(
+            Button.success("yes", yesLabel),
+            Button.danger("no", noLabel)
+        ))
+        return this
+    }
 }
 
-class Button private constructor() {
+class Button private constructor(
+    val label: String,
+    val link: String?,
+    val customId: String?,
+    val disabled: Boolean,
+    val type: ButtonType
+) {
 
-    var label: String? = null
     var emojiNative: Emoji? = null
     var emojiSrv: github.scarsz.discordsrv.dependencies.jda.api.entities.Emoji? = null
-    var link: String? = null
-    var customId: String = null!!
-    var type: ButtonType = null!!
-    var disabled: Boolean = null!!
 
     enum class ButtonType {
         Primary,
@@ -181,107 +306,82 @@ class Button private constructor() {
 
     companion object {
         fun primary(customId: String, label: String, disabled: Boolean = false): Button {
-            val button = Button()
-            button.label = label
-            button.customId = customId
-            button.type = ButtonType.Primary
-            button.disabled = disabled
-            return button
+            return Button(label, null, customId, disabled, ButtonType.Primary)
         }
 
         fun secondary(customId: String, label: String, disabled: Boolean = false): Button {
-            val button = Button()
-            button.label = label
-            button.customId = customId
-            button.type = ButtonType.Secondary
-            button.disabled = disabled
-            return button
+            return Button(label, null, customId, disabled, ButtonType.Secondary)
         }
 
         fun success(customId: String, label: String, disabled: Boolean = false): Button {
-            val button = Button()
-            button.label = label
-            button.customId = customId
-            button.type = ButtonType.Primary
-            button.disabled = disabled
-            return button
+            return Button(label, null, customId, disabled, ButtonType.Success)
         }
 
         fun danger(customId: String, label: String, disabled: Boolean = false): Button {
-            val button = Button()
-            button.label = label
-            button.customId = customId
-            button.type = ButtonType.Danger
-            button.disabled = disabled
-            return button
+            return Button(label, null, customId, disabled, ButtonType.Danger)
         }
 
-        fun link(customId: String, link: String, disabled: Boolean = false): Button {
-            val button = Button()
-            button.link = link
-            button.customId = customId
-            button.type = ButtonType.Link
-            button.disabled = disabled
-            return button
+        fun link(label: String, link: String, disabled: Boolean = false): Button {
+            return Button(label, link, null, disabled, ButtonType.Link)
         }
     }
 
-    fun getNative() {
-        when(type) {
+    fun getNative(): net.dv8tion.jda.api.interactions.components.Button {
+        return when(type) {
             ButtonType.Primary -> {
                 if(label == null)
-                    net.dv8tion.jda.api.interactions.components.Button.primary(customId, emojiNative!!).withDisabled(disabled)
-                else net.dv8tion.jda.api.interactions.components.Button.primary(customId, label!!).withDisabled(disabled)
+                    net.dv8tion.jda.api.interactions.components.Button.primary(customId!!, emojiNative!!).withDisabled(disabled)
+                else net.dv8tion.jda.api.interactions.components.Button.primary(customId!!, label).withDisabled(disabled)
             }
             ButtonType.Danger -> {
                 if(label == null)
-                    net.dv8tion.jda.api.interactions.components.Button.danger(customId, emojiNative!!).withDisabled(disabled)
-                else net.dv8tion.jda.api.interactions.components.Button.danger(customId, label!!).withDisabled(disabled)
+                    net.dv8tion.jda.api.interactions.components.Button.danger(customId!!, emojiNative!!).withDisabled(disabled)
+                else net.dv8tion.jda.api.interactions.components.Button.danger(customId!!, label).withDisabled(disabled)
             }
             ButtonType.Secondary -> {
                 if(label == null)
-                    net.dv8tion.jda.api.interactions.components.Button.secondary(customId, emojiNative!!).withDisabled(disabled)
-                else net.dv8tion.jda.api.interactions.components.Button.secondary(customId, label!!).withDisabled(disabled)
+                    net.dv8tion.jda.api.interactions.components.Button.secondary(customId!!, emojiNative!!).withDisabled(disabled)
+                else net.dv8tion.jda.api.interactions.components.Button.secondary(customId!!, label).withDisabled(disabled)
             }
             ButtonType.Success -> {
                 if(label == null)
-                    net.dv8tion.jda.api.interactions.components.Button.success(customId, emojiNative!!).withDisabled(disabled)
-                else net.dv8tion.jda.api.interactions.components.Button.success(customId, label!!).withDisabled(disabled)
+                    net.dv8tion.jda.api.interactions.components.Button.success(customId!!, emojiNative!!).withDisabled(disabled)
+                else net.dv8tion.jda.api.interactions.components.Button.success(customId!!, label).withDisabled(disabled)
             }
             ButtonType.Link -> {
                 if(label == null)
                     net.dv8tion.jda.api.interactions.components.Button.link(link!!, emojiNative!!).withDisabled(disabled)
-                else net.dv8tion.jda.api.interactions.components.Button.danger(link!!, label!!).withDisabled(disabled)
+                else net.dv8tion.jda.api.interactions.components.Button.link(link!!, label).withDisabled(disabled)
             }
         }
     }
 
-    fun getSRV() {
-        when(type) {
+    fun getSRV(): github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button {
+        return when(type) {
             ButtonType.Primary -> {
                 if(label == null)
-                    github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.primary(customId, emojiSrv!!).withDisabled(disabled)
-                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.primary(customId, label!!).withDisabled(disabled)
+                    github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.primary(customId!!, emojiSrv!!).withDisabled(disabled)
+                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.primary(customId!!, label).withDisabled(disabled)
             }
             ButtonType.Success -> {
                 if(label == null)
-                    github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.success(customId, emojiSrv!!).withDisabled(disabled)
-                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.success(customId, label!!).withDisabled(disabled)
+                    github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.success(customId!!, emojiSrv!!).withDisabled(disabled)
+                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.success(customId!!, label).withDisabled(disabled)
             }
             ButtonType.Danger -> {
                 if(label == null)
-                    github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.danger(customId, emojiSrv!!).withDisabled(disabled)
-                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.danger(customId, label!!).withDisabled(disabled)
+                    github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.danger(customId!!, emojiSrv!!).withDisabled(disabled)
+                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.danger(customId!!, label).withDisabled(disabled)
             }
             ButtonType.Secondary -> {
                 if(label == null)
-                    github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.secondary(customId, emojiSrv!!).withDisabled(disabled)
-                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.secondary(customId, label!!).withDisabled(disabled)
+                    github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.secondary(customId!!, emojiSrv!!).withDisabled(disabled)
+                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.secondary(customId!!, label).withDisabled(disabled)
             }
             ButtonType.Link -> {
                 if(label == null)
                     github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.link(link!!, emojiSrv!!).withDisabled(disabled)
-                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.danger(link!!, label!!).withDisabled(disabled)
+                else github.scarsz.discordsrv.dependencies.jda.api.interactions.components.Button.link(link!!, label).withDisabled(disabled)
             }
         }
     }
@@ -303,7 +403,8 @@ class InteractionCollector(
     enum class DoneType {
         Expired,
         CountExceeded,
-        Cancelled
+        Cancelled,
+        MessageDeleted
     }
 
     var onDone: ((DoneType, List<ComponentInteractionEvent>) -> Unit)? = null
@@ -314,26 +415,32 @@ class InteractionCollector(
         registerEvent()
     }
 
-    private fun handleTimer()
-    {
-
+    fun stop() {
+        stopCollector(DoneType.Cancelled)
     }
 
-    fun stop() {
+    private fun stopCollector(type: DoneType) {
         unregisterEvent()
         timer.cancel()
-        onDone?.let { it(DoneType.Cancelled, collection) }
+        onDone?.let { it(type, collection) }
+    }
+
+    private fun handleTimer()
+    {
+        stopCollector(DoneType.Expired)
     }
 
     private fun registerEvent() {
+        main.commandHandler.getMessageDeleteEvents()[message.id] = {
+            stopCollector(DoneType.MessageDeleted)
+        }
         main.commandHandler.getEvents()[message.id] = { interactionEvent ->
             if(count != null)
             {
                 counter++
                 if(counter > count)
                 {
-                    timer.cancel()
-                    onDone?.let { it(DoneType.CountExceeded, collection) }
+                    stopCollector(DoneType.CountExceeded)
                 }
             }
 
@@ -351,9 +458,20 @@ class InteractionCollector(
 
     private fun unregisterEvent() {
         main.commandHandler.getEvents().remove(message.id)
+        main.commandHandler.getMessageDeleteEvents().remove(message.id
+        )
     }
+}
 
+class MessageDeleteEvent(
+    val native: MessageDeleteEvent?,
+    val srv: github.scarsz.discordsrv.dependencies.jda.api.events.message.MessageDeleteEvent?
+) {
+    constructor(event: MessageDeleteEvent): this(event, null)
+    constructor(event: github.scarsz.discordsrv.dependencies.jda.api.events.message.MessageDeleteEvent): this(null, event)
 
+    val messageId
+        get() = native?.messageId ?: srv!!.messageId
 }
 
 class Message (
@@ -383,10 +501,47 @@ class Message (
         return InteractionCollector(this, main, time, count)
     }
 
-    fun editEmbed(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+    fun awaitYesOrNo(time: Long, filter: (ComponentInteractionEvent) -> Boolean, outcome: (accepted: Boolean, interaction: ComponentInteractionEvent?, deleted: Boolean) -> Unit) {
+        val collector = createInteractionCollector(time, false)
+
+        collector.onClick = { interaction ->
+            if(filter(interaction)) {
+                when(interaction.componentId) {
+                    "yes" -> {
+                        collector.stop()
+                        outcome(true, interaction, false)
+                    }
+                    else -> {
+                        collector.stop()
+                        outcome(false, interaction, false)
+                    }
+                }
+            } else {
+                sendWrongUserInteractionMessage(interaction)
+            }
+        }
+
+        collector.onDone = { type, _ ->
+            when(type) {
+                InteractionCollector.DoneType.Expired -> outcome(false, null, false)
+                InteractionCollector.DoneType.MessageDeleted -> outcome(false, null, true)
+            }
+        }
+    }
+
+    fun editMessage(content: String): me.pliexe.discordeconomybridge.discord.MessageAction {
         return if(nativeMessage == null)
-            MessageAction(SRVMessage!!.editMessageEmbeds(embed.getSRV().build()), main)
-        else MessageAction(nativeMessage.editMessageEmbeds(embed.getNative().build()), main)
+            MessageAction(SRVMessage!!.editMessage(content), main)
+        else MessageAction(nativeMessage.editMessage(content), main)
+    }
+
+    fun editMessage(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+        if(embed.isEmpty)
+            editMessage(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+
+        return if(nativeMessage == null)
+            MessageAction(SRVMessage!!.editMessageEmbeds(embed.getSRV().build()).content(embed.content), main)
+        else MessageAction(nativeMessage.editMessageEmbeds(embed.getNative().build()).content(embed.content), main)
     }
 
     fun awaitButtonInteractions(count: Int, timer: Long, onDone: ((type: InteractionCollector.DoneType, collected: List<ComponentInteractionEvent>) -> Unit), onClick: ((event: ComponentInteractionEvent) -> Boolean)? = null) {
@@ -396,18 +551,25 @@ class Message (
             main.commandHandler.getEvents().remove(id)
             onDone(InteractionCollector.DoneType.Expired, collected)
         }
+        main.commandHandler.getMessageDeleteEvents()[id] = {
+            tmr.cancel()
+            main.commandHandler.getEvents().remove(id)
+            onDone(InteractionCollector.DoneType.MessageDeleted, collected)
+        }
         main.commandHandler.getEvents()[id] = { event ->
             i++
             if(onClick != null)
                 if(onClick(event)) {
                     tmr.cancel()
                     main.commandHandler.getEvents().remove(id)
+                    main.commandHandler.getMessageDeleteEvents().remove(id)
                     onDone(InteractionCollector.DoneType.CountExceeded, collected)
                 }
             collected.add(event)
             if(i >= count) {
                 tmr.cancel()
                 main.commandHandler.getEvents().remove(id)
+                main.commandHandler.getMessageDeleteEvents().remove(id)
                 onDone(InteractionCollector.DoneType.CountExceeded, collected)
             }
         }
@@ -419,12 +581,18 @@ class Message (
             main.commandHandler.getEvents().remove(id)
             onDone(InteractionCollector.DoneType.Expired, collected)
         }
+        main.commandHandler.getMessageDeleteEvents()[id] = {
+            tmr.cancel()
+            main.commandHandler.getEvents().remove(id)
+            onDone(InteractionCollector.DoneType.MessageDeleted, collected)
+        }
         main.commandHandler.getEvents()[id] = { event ->
             if(interval)
             {
                 tmr.cancel()
                 tmr = Timer().schedule(timer) {
                     main.commandHandler.getEvents().remove(id)
+                    main.commandHandler.getMessageDeleteEvents().remove(id)
                     onDone(InteractionCollector.DoneType.Expired, collected)
                 }
             }
@@ -432,6 +600,7 @@ class Message (
                 if(onClick(event)) {
                     tmr.cancel()
                     main.commandHandler.getEvents().remove(id)
+                    main.commandHandler.getMessageDeleteEvents().remove(id)
                     onDone(InteractionCollector.DoneType.CountExceeded, collected)
                 }
             collected.add(event)
@@ -443,6 +612,8 @@ class DiscordEmbed(
     val nativeBuilder: EmbedBuilder?,
     val SRVBuilder: github.scarsz.discordsrv.dependencies.jda.api.EmbedBuilder?
 ) {
+    var content: String? = null
+
     fun getNative(): EmbedBuilder {
         return nativeBuilder!!
     }
@@ -475,41 +646,56 @@ class DiscordEmbed(
         return this
     }
 
-    fun setColor(color: Color?) {
+    fun setColor(color: Color?): DiscordEmbed {
         if(nativeBuilder == null)
             SRVBuilder!!.setColor(color)
         else nativeBuilder.setColor(color)
+
+        return this
     }
 
-    fun setColor(color: Int) {
+    fun setColor(color: Int): DiscordEmbed {
         if(nativeBuilder == null)
             SRVBuilder!!.setColor(color)
         else nativeBuilder.setColor(color)
+
+        return this
     }
 
-    fun setFooter(text: String?, iconUrl: String? = null) {
+    fun setFooter(text: String?, iconUrl: String? = null): DiscordEmbed {
         if(nativeBuilder == null)
             SRVBuilder!!.setFooter(text, iconUrl)
         else nativeBuilder.setFooter(text, iconUrl)
+
+        return this
     }
 
-    fun setImage(url: String?) {
+    fun setImage(url: String?): DiscordEmbed {
         if(nativeBuilder == null)
             SRVBuilder!!.setImage(url)
         else nativeBuilder.setImage(url)
+
+        return this
     }
 
-    fun setThumbnail(url: String?) {
+    fun setThumbnail(url: String?): DiscordEmbed {
         if(nativeBuilder == null)
             SRVBuilder!!.setThumbnail(url)
         else nativeBuilder.setThumbnail(url)
+
+        return this
     }
 
-    fun setAuthor(name: String?, url: String?, iconURL: String?) {
+    fun setAuthor(name: String?, url: String?, iconURL: String?): DiscordEmbed {
         if(nativeBuilder == null)
             SRVBuilder!!.setAuthor(name, url, iconURL)
         else nativeBuilder.setAuthor(name, url, iconURL)
+
+        return this
     }
+
+    val isEmpty: Boolean
+        get() = nativeBuilder?.isEmpty ?: SRVBuilder!!.isEmpty
 }
 
 open class OptionBase (
@@ -589,6 +775,7 @@ class CommandOptions() {
 
     fun toNative(name: String, description: String): CommandData {
         val cmdData = CommandData(name, description)
+            .setDefaultEnabled(defaultEnabled)
 
         options.forEach { (key, value) ->
             if(value is OptionData)
@@ -600,6 +787,7 @@ class CommandOptions() {
 
     fun toSRV(name: String, description: String): github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.build.CommandData {
         val cmdData = github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.build.CommandData(name, description)
+            .setDefaultEnabled(defaultEnabled)
 
         options.forEach { (key, value) ->
             if(value is OptionData)
@@ -634,16 +822,56 @@ class ComponentInteractionEvent(
     val user: DiscordUser
         get() = if(eventNative == null) DiscordUser(eventSRV!!.user) else DiscordUser(eventNative.user)
 
-    fun replyEmbed(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+    val member: DiscordMember?
+        get() {
+            return if(eventNative == null)
+                eventSRV?.member?.let { DiscordMember(it) }
+            else eventNative.member?.let { DiscordMember(it) }
+        }
+
+    fun reply(content: String): me.pliexe.discordeconomybridge.discord.MessageAction {
         return if(eventNative == null)
-            MessageAction(eventSRV!!.replyEmbeds(embed.getSRV().build()), main)
-        else MessageAction(eventNative.replyEmbeds(embed.getNative().build()), main)
+            MessageAction(eventSRV!!.reply(content), main)
+        else MessageAction(eventNative.reply(content), main)
     }
 
-    fun editEmbed(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+    fun reply(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+        if(embed.isEmpty)
+            reply(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+
         return if(eventNative == null)
-            MessageAction(eventSRV!!.editMessageEmbeds(embed.getSRV().build()), main)
-        else MessageAction(eventNative.editMessageEmbeds(embed.getNative().build()), main)
+            MessageAction(eventSRV!!.replyEmbeds(embed.getSRV().build()).setContent(embed.content), main)
+        else MessageAction(eventNative.replyEmbeds(embed.getNative().build()).setContent(embed.content), main)
+    }
+
+    fun replyEphemeral(content: String): me.pliexe.discordeconomybridge.discord.MessageAction {
+        return if(eventNative == null)
+            MessageAction(eventSRV!!.reply(content).setEphemeral(true), main)
+        else MessageAction(eventNative.reply(content).setEphemeral(true), main)
+    }
+
+    fun replyEphemeral(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+        if(embed.isEmpty)
+            reply(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+
+        return if(eventNative == null)
+            MessageAction(eventSRV!!.replyEmbeds(embed.getSRV().build()).setContent(embed.content).setEphemeral(true), main)
+        else MessageAction(eventNative.replyEmbeds(embed.getNative().build()).setContent(embed.content).setEphemeral(true), main)
+    }
+
+    fun editMessage(content: String): me.pliexe.discordeconomybridge.discord.MessageAction {
+        return if(eventNative == null)
+            MessageAction(eventSRV!!.editMessage(content), main)
+        else MessageAction(eventNative.editMessage(content), main)
+    }
+
+    fun editMessage(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+        if(embed.isEmpty)
+            editMessage(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+
+        return if(eventNative == null)
+            MessageAction(eventSRV!!.editMessageEmbeds(embed.getSRV().build()).setContent(embed.content), main)
+        else MessageAction(eventNative.editMessageEmbeds(embed.getNative().build()).setContent(embed.content), main)
     }
 
     fun CreateEmbed(): DiscordEmbed {
@@ -664,9 +892,6 @@ class CommandEventData (
     val prefix: String = "/",
     val args: List<String>? = null,
 
-    val member: DiscordMember?,
-    val author: DiscordUser,
-
     private val guildEventNative: GuildMessageReceivedEvent?,
     private val guildEventSRV: github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent?,
 
@@ -677,8 +902,44 @@ class CommandEventData (
     private val slashCommandEventSRV: SlashCommandEvent?
         ) {
 
+    val member: DiscordMember?
+        get() {
+            return when(type) {
+                Type.GuildMessageNative -> guildEventNative!!.member?.let { DiscordMember(it) }
+                Type.MessageNative -> globalEventNative!!.member?.let { DiscordMember(it) }
+                Type.SlashCommandNative -> slashCommandEventNative!!.member?.let { DiscordMember(it) }
+                Type.GuildMessageSRV -> guildEventSRV!!.member?.let { DiscordMember(it) }
+                Type.MessageSRV -> globalEventSRV!!.member?.let { DiscordMember(it) }
+                Type.SlashCommandSRV -> slashCommandEventSRV!!.member?.let { DiscordMember(it) }
+            }
+        }
+
+    val author: DiscordUser
+        get() {
+            return when(type) {
+                Type.GuildMessageNative -> DiscordUser(guildEventNative!!.author)
+                Type.MessageNative -> DiscordUser(globalEventNative!!.author)
+                Type.SlashCommandNative -> DiscordUser(slashCommandEventNative!!.user)
+                Type.GuildMessageSRV -> DiscordUser(guildEventSRV!!.author)
+                Type.MessageSRV -> DiscordUser(globalEventSRV!!.author)
+                Type.SlashCommandSRV -> DiscordUser(slashCommandEventSRV!!.user)
+            }
+        }
+
     val user: DiscordUser
         get() = author
+
+    val message: Message?
+        get() {
+            return when(type) {
+                Type.GuildMessageNative -> Message(guildEventNative!!.message, main)
+                Type.MessageNative -> Message(globalEventNative!!.message, main)
+                Type.SlashCommandNative -> null
+                Type.GuildMessageSRV -> Message(guildEventSRV!!.message, main)
+                Type.MessageSRV -> Message(globalEventSRV!!.message, main)
+                Type.SlashCommandSRV -> null
+            }
+        }
 
     fun isNative(): Boolean {
         return type.ordinal < 3
@@ -696,6 +957,12 @@ class CommandEventData (
         return if(isNative())
             slashCommandEventNative!!.options.find { it.name == name }?.asDouble
         else slashCommandEventSRV!!.options.find { it.name == name }?.asDouble
+    }
+
+    fun getOptionInt(name: String): Int? {
+        return if(isNative())
+            slashCommandEventNative!!.options.find { it.name == name }?.asLong?.toInt()
+        else slashCommandEventSRV!!.options.find { it.name == name }?.asLong?.toInt()
     }
 
     fun getOptionString(name: String): String? {
@@ -782,21 +1049,35 @@ class CommandEventData (
         SlashCommandSRV
     }
 
-    constructor(main: DiscordEconomyBridge, event: GuildMessageReceivedEvent, commandName: String, prefix: String, args: List<String>, member: DiscordMember?, author: DiscordUser) : this(main, Type.GuildMessageNative, commandName, prefix, args, member, author, event, null, null, null, null, null)
-    constructor(main: DiscordEconomyBridge, event: github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent, commandName: String, prefix: String, args: List<String>, member: DiscordMember?, author: DiscordUser) : this(main, Type.GuildMessageSRV, commandName, prefix, args, member, author, null, event, null, null, null, null)
-    constructor(main: DiscordEconomyBridge, event: MessageReceivedEvent, commandName: String, prefix: String, args: List<String>, member: DiscordMember?, author: DiscordUser) : this(main, Type.MessageNative, commandName, prefix, args, member, author, null, null, event, null, null, null)
-    constructor(main: DiscordEconomyBridge, event: github.scarsz.discordsrv.dependencies.jda.api.events.message.MessageReceivedEvent, commandName: String, prefix: String, args: List<String>, member: DiscordMember?, author: DiscordUser) : this(main, Type.MessageSRV, commandName, prefix, args, member, author, null, null, null, event, null, null)
-    constructor(main: DiscordEconomyBridge, event: net.dv8tion.jda.api.events.interaction.SlashCommandEvent, commandName: String, prefix: String, args: List<String>, member: DiscordMember?, author: DiscordUser) : this(main, Type.SlashCommandNative, commandName, prefix, args, member, author, null, null, null, null, event, null)
-    constructor(main: DiscordEconomyBridge, event: SlashCommandEvent, commandName: String, prefix: String, args: List<String>, member: DiscordMember?, author: DiscordUser) : this(main, Type.SlashCommandNative, commandName, prefix, args, member, author, null, null, null, null, null, event)
+    constructor(main: DiscordEconomyBridge, event: GuildMessageReceivedEvent, commandName: String, prefix: String, args: List<String>) : this(main, Type.GuildMessageNative, commandName, prefix, args, event, null, null, null, null, null)
+    constructor(main: DiscordEconomyBridge, event: github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent, commandName: String, prefix: String, args: List<String>) : this(main, Type.GuildMessageSRV, commandName, prefix, args, null, event, null, null, null, null)
+    constructor(main: DiscordEconomyBridge, event: MessageReceivedEvent, commandName: String, prefix: String, args: List<String>) : this(main, Type.MessageNative, commandName, prefix, args, null, null, event, null, null, null)
+    constructor(main: DiscordEconomyBridge, event: github.scarsz.discordsrv.dependencies.jda.api.events.message.MessageReceivedEvent, commandName: String, prefix: String, args: List<String>) : this(main, Type.MessageSRV, commandName, prefix, args, null, null, null, event, null, null)
+    constructor(main: DiscordEconomyBridge, event: net.dv8tion.jda.api.events.interaction.SlashCommandEvent, commandName: String, prefix: String) : this(main, Type.SlashCommandNative, commandName, prefix, null, null, null, null, null, event, null)
+    constructor(main: DiscordEconomyBridge, event: SlashCommandEvent, commandName: String, prefix: String) : this(main, Type.SlashCommandNative, commandName, prefix, null, null, null, null, null, null, event)
 
-    fun sendEmbed(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+    fun sendMessage(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
+        if(embed.isEmpty)
+            sendMessage(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+
         return when(type) {
-            Type.GuildMessageNative -> MessageAction(guildEventNative!!.channel.sendMessageEmbeds(embed.getNative().build()), main)
-            Type.GuildMessageSRV -> MessageAction(guildEventSRV!!.channel.sendMessageEmbeds(embed.getSRV().build()), main)
-            Type.MessageNative -> MessageAction(globalEventNative!!.channel.sendMessageEmbeds(embed.getNative().build()), main)
-            Type.MessageSRV -> MessageAction(globalEventSRV!!.channel.sendMessageEmbeds(embed.getSRV().build()), main)
-            Type.SlashCommandNative -> MessageAction(slashCommandEventNative!!.replyEmbeds(embed.getNative().build()), main)
-            Type.SlashCommandSRV -> MessageAction(slashCommandEventSRV!!.replyEmbeds(embed.getSRV().build()), main)
+            Type.GuildMessageNative -> MessageAction(guildEventNative!!.channel.sendMessageEmbeds(embed.getNative().build()).content(embed.content), main)
+            Type.GuildMessageSRV -> MessageAction(guildEventSRV!!.channel.sendMessageEmbeds(embed.getSRV().build()).content(embed.content), main)
+            Type.MessageNative -> MessageAction(globalEventNative!!.channel.sendMessageEmbeds(embed.getNative().build()).content(embed.content), main)
+            Type.MessageSRV -> MessageAction(globalEventSRV!!.channel.sendMessageEmbeds(embed.getSRV().build()).content(embed.content), main)
+            Type.SlashCommandNative -> MessageAction(slashCommandEventNative!!.replyEmbeds(embed.getNative().build()).setContent(embed.content), main)
+            Type.SlashCommandSRV -> MessageAction(slashCommandEventSRV!!.replyEmbeds(embed.getSRV().build()).setContent(embed.content), main)
+        }
+    }
+
+    fun sendMessage(content: String): me.pliexe.discordeconomybridge.discord.MessageAction {
+        return when(type) {
+            Type.GuildMessageNative -> MessageAction(guildEventNative!!.channel.sendMessage(content), main)
+            Type.GuildMessageSRV -> MessageAction(guildEventSRV!!.channel.sendMessage(content), main)
+            Type.MessageNative -> MessageAction(globalEventNative!!.channel.sendMessage(content), main)
+            Type.MessageSRV -> MessageAction(globalEventSRV!!.channel.sendMessage(content), main)
+            Type.SlashCommandNative -> MessageAction(slashCommandEventNative!!.reply(content), main)
+            Type.SlashCommandSRV -> MessageAction(slashCommandEventSRV!!.reply(content), main)
         }
     }
 
@@ -811,7 +1092,7 @@ class CommandEventData (
     }
 
     fun sendYMLEmbed(path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): me.pliexe.discordeconomybridge.discord.MessageAction {
-        return sendEmbed(getYMLEmbed(path, filter, resolveScript, ignoreDescription))
+        return sendMessage(getYMLEmbed(path, filter, resolveScript, ignoreDescription))
     }
 }
 
@@ -824,6 +1105,7 @@ abstract class Command(protected val main: DiscordEconomyBridge) {
     abstract val usage: String
     abstract val description: String
 
+//    abstract val guildOnly: Boolean
 
     abstract fun run(event: CommandEventData)
 
@@ -847,7 +1129,7 @@ abstract class Command(protected val main: DiscordEconomyBridge) {
             if(event.member == null)
                 setDiscordPlaceholders(event.author, form)
             else
-                setDiscordPlaceholders(event.member, form)
+                setDiscordPlaceholders(event.member!!, form)
         }).queue()
     }
 
@@ -858,7 +1140,7 @@ abstract class Command(protected val main: DiscordEconomyBridge) {
 
             if(event.member == null)
                 setDiscordPlaceholders(event.author, form)
-            else setDiscordPlaceholders(event.member, form)
+            else setDiscordPlaceholders(event.member!!, form)
         }).queue()
     }
 }

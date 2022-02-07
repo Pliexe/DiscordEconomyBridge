@@ -29,6 +29,13 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
             if(event.userMentionsSize() > 0) event.getUserMention(0) else event.author
         }
 
+        if(user.id != event.author.id && (if(config.isBoolean("disableViewingOfOtherUsers")) config.getBoolean("disableViewingOfOtherUsers") else false)) {
+            if(event.member == null)
+                return fail(event, "You may not look at other peoples balance!")
+            else if(!main.moderatorManager.isModerator(event.member!!))
+                return fail(event, "You don't have permission to view the balance of other users!")
+        }
+
         val uuid: UUID = main.linkHandler.getUuid(user.id)
             ?: return fail(event, "This user does not have his account linked!")
 
@@ -40,11 +47,11 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
                 (if(event.member == null)
                      setPlaceholdersForDiscordMessage(event.author, player, form)
                 else
-                    setPlaceholdersForDiscordMessage(event.member, player, form))
+                    setPlaceholdersForDiscordMessage(event.member!!, player, form))
                     .replace("%custom_vault_eco_balance%", formatMoney(player.getBalance(main), config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
                     .replace("%custom_player_online%", if(player.isOnline) "Online" else "Offline")
             }, {
-                if(it == "isOnline") player.isOnline else false
+                if(it == "ifOnline") player.isOnline else false
             }).queue()
         }
 

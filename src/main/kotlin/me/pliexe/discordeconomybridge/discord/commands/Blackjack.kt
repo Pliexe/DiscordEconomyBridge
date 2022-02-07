@@ -1,18 +1,9 @@
 package me.pliexe.discordeconomybridge.discord.commands
-import github.scarsz.discordsrv.DiscordSRV
-import github.scarsz.discordsrv.dependencies.jda.api.entities.Message
-import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.ButtonClickEvent
-import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
-import github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.discord.*
 import me.pliexe.discordeconomybridge.formatMoney
 import net.dv8tion.jda.api.interactions.commands.OptionType
-import org.bukkit.entity.Player
 import java.text.DecimalFormat
-import java.util.*
-import kotlin.collections.HashMap
-import kotlin.concurrent.schedule
 import kotlin.random.Random
 import kotlin.random.nextInt
 
@@ -63,7 +54,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
         if(bet > maxBet)
             return fail(event, "The wager may not be higher than $maxBet")
 
-        val uuid = DiscordSRV.getPlugin().accountLinkManager.getUuid(event.author.id)
+        val uuid = main.linkHandler.getUuid(event.author.id)
             ?: return fail(event, "Your account is not linked!")
 
         val player = server.getOfflinePlayer(uuid)
@@ -131,13 +122,13 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
 
                 if(event.member == null)
                     setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
-                else setPlaceholdersForDiscordMessage(event.member, player, form)
+                else setPlaceholdersForDiscordMessage(event.member!!, player, form)
             })
 
             if(bEvent == null)
-                event.sendEmbed(embed).queue()
+                event.sendMessage(embed).queue()
             else
-                bEvent.editEmbed(embed).removeActinRows().queue()
+                bEvent.editMessage(embed).removeActinRows().queue()
         }
 
         fun draw(blackjack: Boolean, bEvent: ComponentInteractionEvent? = null) {
@@ -152,17 +143,17 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                 if(event.member == null)
                     setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
                 else
-                    setPlaceholdersForDiscordMessage(event.member, player, form)
+                    setPlaceholdersForDiscordMessage(event.member!!, player, form)
             })
 
             if(bEvent == null)
             {
                 if(msg == null)
-                    event.sendEmbed(embed).queue()
-                else msg!!.editEmbed(embed).removeActinRows().queue()
+                    event.sendMessage(embed).queue()
+                else msg!!.editMessage(embed).removeActinRows().queue()
             }
             else
-                bEvent.editEmbed(embed).removeActinRows().queue()
+                bEvent.editMessage(embed).removeActinRows().queue()
         }
 
         fun bust(enemy: Boolean, bEvent: ComponentInteractionEvent? = null) {
@@ -181,12 +172,12 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                 if(event.member == null)
                     setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
                 else
-                    setPlaceholdersForDiscordMessage(event.member, player, form)
+                    setPlaceholdersForDiscordMessage(event.member!!, player, form)
             })
 
             if(bEvent == null)
-                msg!!.editEmbed(embed).removeActinRows().queue()
-            else bEvent.editEmbed(embed).removeActinRows().queue()
+                msg!!.editMessage(embed).removeActinRows().queue()
+            else bEvent.editMessage(embed).removeActinRows().queue()
         }
 
         fun otherOutcomes(enemy: Boolean, bEvent: ComponentInteractionEvent? = null) {
@@ -205,12 +196,12 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                 if(event.member == null)
                     setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
                 else
-                    setPlaceholdersForDiscordMessage(event.member, player, form)
+                    setPlaceholdersForDiscordMessage(event.member!!, player, form)
             })
 
             if(bEvent == null)
-                msg!!.editEmbed(embed).removeActinRows().queue()
-            else bEvent.editEmbed(embed).removeActinRows().queue()
+                msg!!.editMessage(embed).removeActinRows().queue()
+            else bEvent.editMessage(embed).removeActinRows().queue()
         }
 
         fun resolveDealerActions(bEvent: ComponentInteractionEvent? = null): Boolean {
@@ -271,18 +262,20 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                 if(event.member == null)
                     setPlaceholdersForDiscordMessage(event.user, UniversalPlayer(player), form)
                 else
-                    setPlaceholdersForDiscordMessage(event.member, player, form)
+                    setPlaceholdersForDiscordMessage(event.member!!, player, form)
             })
 
             if(bEvent == null)
             {
-                event.sendEmbed(embed)
+                event.sendMessage(embed)
                     .setActionRow(mutableListOf(
-                        Button.primary("hit", "Hit"),
-                        Button.primary("stand", "Stand"),
-                        Button.primary("double", "Double Down", currentBalance - bet * 2 <= 0)
+                        Button.primary("hit", getStringOrStringList("blackjackButtonHitLabel", main.discordMessagesConfig!!) ?: "Hit"),
+                        Button.primary("stand", getStringOrStringList("blackjackButtonStandLabel", main.discordMessagesConfig!!) ?: "Stand"),
+                        Button.primary("double", getStringOrStringList("blackjackButtonDoubleDownLabel", main.discordMessagesConfig!!) ?: "Double Down", currentBalance - bet * 2 <= 0)
                     )).queue { message ->
                         msg = message
+
+                        message.editMessage("TEST WORKS")
 
                         val collector = message.createInteractionCollector(300000, true)
 
@@ -300,22 +293,26 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                         }
 
                         collector.onClick = { interaction ->
-                            when(interaction.componentId) {
-                                "hit" -> {
-                                    hit(interaction, message.id)
-                                }
-                                "stand" -> {
-                                    collector.stop()
-                                    stand(interaction)
-                                }
-                                "double" -> {
-                                    collector.stop()
-                                    bet += bet
-                                    yourCards.add(currentDeck.removeAt(0))
-                                    val score = calculateValue(yourCards)
-                                    if(score == 21) blackjackOutcome(false, interaction)
-                                    else if(score > 21) bust(false, interaction)
-                                    else stand(interaction)
+                            if(interaction.user.id != event.author.id) {
+                                interaction.replyEphemeral("You may not interact with this menu!").queue()
+                            } else {
+                                when (interaction.componentId) {
+                                    "hit" -> {
+                                        hit(interaction, message.id)
+                                    }
+                                    "stand" -> {
+                                        collector.stop()
+                                        stand(interaction)
+                                    }
+                                    "double" -> {
+                                        collector.stop()
+                                        bet += bet
+                                        yourCards.add(currentDeck.removeAt(0))
+                                        val score = calculateValue(yourCards)
+                                        if (score == 21) blackjackOutcome(false, interaction)
+                                        else if (score > 21) bust(false, interaction)
+                                        else stand(interaction)
+                                    }
                                 }
                             }
                         }
@@ -326,7 +323,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                         }
                     }
             } else {
-                bEvent.editEmbed(embed)
+                bEvent.editMessage(embed)
                     .setActionRow(mutableListOf(
                         Button.primary("hit", "Hit"),
                         Button.primary("stand", "Stand"),

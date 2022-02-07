@@ -10,6 +10,64 @@ softdepend: [PlaceholderAPI, DiscordSRV]
 
 loadbefore: [floodgate-bukkit]
 
-#commands:
-#  example:
-#    description: aaaa
+commands:
+  linkdiscord:
+    description: Link your player account to your discod account
+    usage: /<command>
+    aliases: [linkd, linkdiscord, discordlink, linkaccount]
+    permission: discordeconomybridge.link
+
+  unlinkdiscord:
+    description: Unlink your discod account from player account
+    usage: /<command>
+    aliases: [ unlinkd, unlinkdiscord, discordunlink, unlinkaccount ]
+    permission: discordeconomybridge.unlink
+
+  discordeconomybridge:
+    description: Help command
+    usage: /<command>
+    aliases: [ deb, discord ]
+    permission: discordeconomybridge.help
+
+  clearslashcommands:
+    description: Clear slash command from a server or servers
+    usage: /<command> guildID
+    permission: discordeconomybridge.clearslashcommands
+
+permissions:
+  discordeconomybridge.help:
+    description: Help command
+    default: not op
+
+  discordeconomybridge.link:
+    description: /linkdiscord command
+    default: not op
+
+  discordeconomybridge.unlink:
+    description: /unlinkdiscord command
+    default: not op
+
+  discordeconomybridge.clearslashcommands:
+    description: /clearslashcommands command
+    default: op
+
+  discordeconomybridge.default:
+    description: Default commands for basic users
+    default: not op
+    children:
+      discordeconomybridge.help: true
+      discordeconomybridge.link: true
+      discordeconomybridge.unlink: true
+
+  discordeconomybridge.admin:
+    description: Admin permissions
+    default: op
+    children:
+      discordeconomybridge.clearslashcommands: true
+
+  discordeconomybridge.*:
+    description: Default and Admin permissions
+    default: op
+    children:
+      discordeconomybridge.default: true
+      discordeconomybridge.admin: true

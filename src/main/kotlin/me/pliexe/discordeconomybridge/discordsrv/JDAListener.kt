@@ -4,6 +4,7 @@ import github.scarsz.discordsrv.DiscordSRV
 import github.scarsz.discordsrv.dependencies.jda.api.entities.Guild
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.GenericComponentInteractionCreateEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
+import github.scarsz.discordsrv.dependencies.jda.api.events.message.MessageDeleteEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent
 import github.scarsz.discordsrv.dependencies.jda.api.hooks.ListenerAdapter
 import github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.privileges.CommandPrivilege
@@ -73,6 +74,10 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
 
     override fun onGenericComponentInteractionCreate(event: GenericComponentInteractionCreateEvent) {
         main.commandHandler.getEvents()[event.interaction.messageId]?.let { it(ComponentInteractionEvent(main, event)) }
+    }
+
+    override fun onMessageDelete(event: MessageDeleteEvent) {
+        main.commandHandler.getMessageDeleteEvents()[event.messageId]?.let { it(me.pliexe.discordeconomybridge.discord.MessageDeleteEvent(event)) }
     }
 
     override fun onSlashCommand(event: SlashCommandEvent) {

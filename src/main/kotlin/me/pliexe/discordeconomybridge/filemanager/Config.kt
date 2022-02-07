@@ -7,13 +7,13 @@ import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.io.InputStreamReader
 
-class Config(private val file: File, main: DiscordEconomyBridge) {
+class Config(private val file: File, inputStreamReader: InputStreamReader, main: DiscordEconomyBridge) {
 
     val config: FileConfiguration
 
     init {
         try {
-            config = YamlConfiguration.loadConfiguration(file)
+            config = YamlConfiguration.loadConfiguration(inputStreamReader)
         } catch (e: Exception) {
             throw Error("Invalid Config: \"$file\". Disabling plugin! Error: $e")
             main.pluginLoader.disablePlugin(main)

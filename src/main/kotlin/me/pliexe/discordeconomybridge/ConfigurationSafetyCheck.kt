@@ -1,7 +1,9 @@
 package me.pliexe.discordeconomybridge
 
 import me.pliexe.discordeconomybridge.filemanager.Config
+import java.util.*
 import java.util.logging.Logger
+import kotlin.collections.LinkedHashMap
 
 fun TokenCheck(main: DiscordEconomyBridge): Boolean {
     val defaultConfig = main.defaultConfig
@@ -47,12 +49,12 @@ fun CheckForConfigurations(main: DiscordEconomyBridge): Boolean {
         return false
     }
 
-    return CheckForMessageConfig(dMessageConfig, logger)
+    return checkForMessageConfig(dMessageConfig, logger)
 }
 
-fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
+fun checkForMessageConfig(dMessageConfig: de.leonhard.storage.Config, logger: Logger): Boolean {
 
-    if(!dMessageConfig.isSet("noPermissionMessage")) {
+    if(!dMessageConfig.contains("noPermissionMessage")) {
         logger.severe("noPermissionMessage is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "noPermissionMessage"))
@@ -61,7 +63,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("failMessage")) {
+    if(!dMessageConfig.contains("failMessage")) {
         logger.severe("failMessage is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "failMessage"))
@@ -70,7 +72,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("addmoneyCommandEmbed")) {
+    if(!dMessageConfig.contains("addmoneyCommandEmbed")) {
         logger.severe("addmoneyCommandEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "addmoneyCommandEmbed"))
@@ -79,7 +81,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("removemoneyCommandEmbed")) {
+    if(!dMessageConfig.contains("removemoneyCommandEmbed")) {
         logger.severe("removemoneyCommandEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "removemoneyCommandEmbed"))
@@ -88,7 +90,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("balanceCommandEmbed")) {
+    if(!dMessageConfig.contains("balanceCommandEmbed")) {
         logger.severe("balanceCommandEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "balanceCommandEmbed"))
@@ -97,7 +99,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("helpCommandEmbed")) {
+    if(!dMessageConfig.contains("helpCommandEmbed")) {
         logger.severe("helpCommandEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "helpCommandEmbed"))
@@ -106,10 +108,10 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("leaderboardCommandEmbed")) {
+    if(!dMessageConfig.contains("leaderboardCommandEmbed")) {
         logger.severe("leaderboardCommandEmbed is not set in discord_messages.yml")
         return false
-    } else if(!validateEmbed(dMessageConfig, "leaderboardCommandEmbed") && !(dMessageConfig.isString("leaderboardCommandEmbed.descriptionRepeat") || (dMessageConfig.isString("leaderboardCommandEmbed.fieldRepeatName") && dMessageConfig.isString("leaderboardCommandEmbed.fieldRepeatValue"))))
+    } else if(!validateEmbed(dMessageConfig, "leaderboardCommandEmbed") && !(validateStringOrList(dMessageConfig.get("leaderboardCommandEmbed.descriptionRepeat")) || (validateStringOrList(dMessageConfig.get("leaderboardCommandEmbed.fieldRepeatName")) && validateStringOrList(dMessageConfig.get("leaderboardCommandEmbed.fieldRepeatValue")))))
     {
         logger.severe("You don't have field, description or title set at leaderboardCommandEmbed.")
         return false
@@ -117,7 +119,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
     
     // Coinflip
 
-    if(!dMessageConfig.isSet("coinflipCommandEmbed")) {
+    if(!dMessageConfig.contains("coinflipCommandEmbed")) {
         logger.severe("coinflipCommandEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "coinflipCommandEmbed") )
@@ -126,7 +128,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("coinflipCommandConfirmEmbed")) {
+    if(!dMessageConfig.contains("coinflipCommandConfirmEmbed")) {
         logger.severe("coinflipCommandConfirmEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "coinflipCommandConfirmEmbed") )
@@ -135,7 +137,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("coinflipCommandDeclineEmbed")) {
+    if(!dMessageConfig.contains("coinflipCommandDeclineEmbed")) {
         logger.severe("coinflipCommandDeclineEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "coinflipCommandDeclineEmbed") )
@@ -146,7 +148,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
 
     // Blackjack
 
-    if(!dMessageConfig.isSet("blackjackCommandShowEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandShowEmbed")) {
         logger.severe("blackjackCommandShowEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandShowEmbed") )
@@ -155,7 +157,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("blackjackCommandBlackjackOutcomePlayerEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandBlackjackOutcomePlayerEmbed")) {
         logger.severe("blackjackCommandBlackjackOutcomePlayerEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandBlackjackOutcomePlayerEmbed") )
@@ -164,7 +166,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("blackjackCommandBlackjackOutcomeDealerEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandBlackjackOutcomeDealerEmbed")) {
         logger.severe("blackjackCommandBlackjackOutcomeDealerEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandBlackjackOutcomeDealerEmbed") )
@@ -173,7 +175,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("blackjackCommandDrawOutcomeEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandDrawOutcomeEmbed")) {
         logger.severe("blackjackCommandDrawOutcomeEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandDrawOutcomeEmbed") )
@@ -182,7 +184,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("blackjackCommandDrawBlackjackOutcomeEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandDrawBlackjackOutcomeEmbed")) {
         logger.severe("blackjackCommandDrawBlackjackOutcomeEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandDrawBlackjackOutcomeEmbed") )
@@ -191,7 +193,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("blackjackCommandBustPlayerEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandBustPlayerEmbed")) {
         logger.severe("blackjackCommandBustPlayerEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandBustPlayerEmbed") )
@@ -200,7 +202,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("blackjackCommandBustDealerEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandBustDealerEmbed")) {
         logger.severe("blackjackCommandBustDealerEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandBustDealerEmbed") )
@@ -209,7 +211,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("blackjackCommandPlayerWinEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandPlayerWinEmbed")) {
         logger.severe("blackjackCommandPlayerWinEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandPlayerWinEmbed") )
@@ -218,7 +220,7 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
         return false
     }
 
-    if(!dMessageConfig.isSet("blackjackCommandDealerWinEmbed")) {
+    if(!dMessageConfig.contains("blackjackCommandDealerWinEmbed")) {
         logger.severe("blackjackCommandDealerWinEmbed is not set in discord_messages.yml")
         return false
     } else if(!validateEmbed(dMessageConfig, "blackjackCommandDealerWinEmbed") )
@@ -301,7 +303,20 @@ fun CheckForMessageConfig(dMessageConfig: Config, logger: Logger): Boolean {
     return true
 }
 
-fun validateEmbed(dMessageConfig: Config, path: String): Boolean {
-    return dMessageConfig.isString("$path.description") || dMessageConfig.isString("$path.title") || (dMessageConfig.isConfigurationSection("$path.fields") && dMessageConfig.getConfigurationSection("$path.fields").getKeys(false)
-        .isNotEmpty())
+fun validateStringOrList(value: Any?): Boolean {
+    return when (value) {
+        is String -> true
+        is List<*> -> true
+        else -> false
+    }
+}
+
+fun isConfigSection(value: Any?): Boolean {
+    return value is LinkedHashMap<*, *>
+}
+
+fun validateEmbed(dMessageConfig: de.leonhard.storage.Config, path: String): Boolean {
+    return validateStringOrList(dMessageConfig.get("$path.description")) ||
+            validateStringOrList(dMessageConfig.get("$path.title")) ||
+            (isConfigSection(dMessageConfig.get("$path.fields")) && dMessageConfig.singleLayerKeySet("$path.fields").isNotEmpty())
 }

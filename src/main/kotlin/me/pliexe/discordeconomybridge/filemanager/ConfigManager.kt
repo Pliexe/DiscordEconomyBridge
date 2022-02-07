@@ -3,6 +3,7 @@ package me.pliexe.discordeconomybridge.filemanager
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import java.io.*
 import java.lang.Exception
+import java.nio.charset.Charset
 
 class ConfigManager {
     companion object {
@@ -27,7 +28,9 @@ class ConfigManager {
                 prepareFile(file, path, main, resource)
             }
 
-            return Config(file, main)
+
+
+            return Config(file, getConfigContent(file, main)!!, main)
         }
 
         private fun getConfigFile(path: String, main: DiscordEconomyBridge): File {
@@ -84,6 +87,22 @@ class ConfigManager {
 
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+
+        private fun getConfigContent(file: File, main: DiscordEconomyBridge): InputStreamReader? {
+            if(!file.exists())
+                return null
+
+            return try {
+
+                val configStr = FileReader(file).readLines().joinToString("\n")
+
+                val configStream = ByteArrayInputStream(configStr.toByteArray(Charset.forName("UTF-8")))
+                InputStreamReader(configStream)
+            } catch (e: IOException) {
+                e.printStackTrace()
+                null
             }
         }
 

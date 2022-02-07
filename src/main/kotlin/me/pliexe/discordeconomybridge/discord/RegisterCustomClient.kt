@@ -5,6 +5,7 @@ import me.pliexe.discordeconomybridge.filemanager.Config
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
+import net.dv8tion.jda.api.requests.GatewayIntent
 import javax.security.auth.login.LoginException
 
 fun registerClient(main: DiscordEconomyBridge, defaultConfig: Config, token: String): JDA? {
@@ -22,9 +23,8 @@ fun registerClient(main: DiscordEconomyBridge, defaultConfig: Config, token: Str
                     else -> null
                 }
             else null)
+            .enableIntents(mutableListOf(GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES))
             .build()
-
-        jda.awaitReady()
 
         return jda
     } catch (e: LoginException) {

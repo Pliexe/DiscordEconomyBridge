@@ -6,8 +6,6 @@ import me.pliexe.discordeconomybridge.formatMoney
 import net.dv8tion.jda.api.interactions.commands.OptionType
 import org.bukkit.OfflinePlayer
 import java.text.DecimalFormat
-import java.util.*
-import kotlin.collections.HashMap
 import kotlin.random.Random
 
 class Coinflip(main: DiscordEconomyBridge) : Command(main) {
@@ -90,7 +88,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
         val formatter = DecimalFormat("#,###.##")
 
         fun sendMsg(winner: DiscordMember, loser: DiscordMember, winnerServer: OfflinePlayer, landSide: String, bevent: ComponentInteractionEvent) {
-            bevent.editEmbed(bevent.getYMLEmbed("coinflipCommandEmbed", {
+            bevent.editMessage(bevent.getYMLEmbed("coinflipCommandEmbed", {
                 val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)
                 setPlaceholdersForDiscordMessage(winner, winnerServer, form)
                     .replace("%discord_other_username%", loser.user.name)
@@ -98,7 +96,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                     .replace("%discord_other_discriminator%", loser.user.discriminator)
                     .replace("{land_side}", landSide)
                     .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-            })).removeActinRows().setContent("** **").queue()
+            })).removeActinRows().queue()
         }
 
         fun decline(bevent: ComponentInteractionEvent? = null) {
@@ -112,10 +110,9 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
             })
 
             if(bevent == null)
-                event.sendEmbed(embed).queue()
-            else bevent.editEmbed(embed).removeActinRows().setContent("** **").queue()
+                event.sendMessage(embed).queue()
+            else bevent.editMessage(embed).removeActinRows().queue()
         }
-
 
         event.sendYMLEmbed("coinflipCommandConfirmEmbed", {
             val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)
@@ -125,18 +122,24 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                 .replace("%discord_other_discriminator%", challenger.user.discriminator)
                 .replace("{amount_wagered}", formatMoney(wager, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
         }).setActionRow(mutableListOf(
-            Button.success("accept", "Accept"),
-            Button.danger("decline", "Decline")
-        )).setContent(if(main.discordMessagesConfig.isBoolean("coinflipCommandDeclineEmbed.ping")) (if(main.discordMessagesConfig.getBoolean("coinflipCommandDeclineEmbed.ping")) "<@${challenger.id}>" else null) else null)
+            Button.success("accept", getStringOrStringList("coinflipButtonAccept", main.discordMessagesConfig!!) ?: "Accept"),
+            Button.danger("decline", getStringOrStringList("coinflipButtonDecline", main.discordMessagesConfig!!) ?: "Decline")
+        ))
             .queue { message ->
-            message.awaitButtonInteractions(1, 300000, { type, collected ->
-                when(type) {
-                    InteractionCollector.DoneType.Expired -> decline()
-                    InteractionCollector.DoneType.CountExceeded -> {
-                        val btnClickEvent = collected.first()
-                        when(btnClickEvent.componentId) {
-                            "decline" -> decline(btnClickEvent)
+
+                val collector = message.createInteractionCollector(300000, false)
+
+                collector.onClick = {
+                    if(it.user.id != challenger.id) {
+                        it.replyEphemeral("You may not interact with this menu!").queue()
+                    } else {
+                        when(it.componentId) {
+                            "decline" -> {
+                                collector.stop()
+                                decline(it)
+                            }
                             "accept" -> {
+                                collector.stop()
                                 if(Random.nextInt(0, 2) > 0)
                                 {
                                     if(!main.getEconomy().hasAccount(challengerPlayer))
@@ -145,7 +148,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                                     main.getEconomy().depositPlayer(challengerPlayer, wager)
                                     main.getEconomy().withdrawPlayer(wagerPlayer, wager)
 
-                                    sendMsg(challenger, event.member!!, challengerPlayer, "tail", btnClickEvent)
+                                    sendMsg(challenger, event.member!!, challengerPlayer, "tail", it)
                                 } else {
                                     if(!main.getEconomy().hasAccount(challengerPlayer))
                                         main.getEconomy().createPlayerAccount(challengerPlayer)
@@ -153,14 +156,18 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                                     main.getEconomy().depositPlayer(wagerPlayer, wager)
                                     main.getEconomy().withdrawPlayer(challengerPlayer, wager)
 
-                                    sendMsg(event.member!!, challenger, wagerPlayer, "head", btnClickEvent)
+                                    sendMsg(event.member!!, challenger, wagerPlayer, "head", it)
                                 }
                             }
                         }
                     }
-                    else -> {}
                 }
-            })
+
+                collector.onDone = { type, _ ->
+                    if(type == InteractionCollector.DoneType.Expired) {
+                        decline()
+                    }
+                }
         }
     }
 }

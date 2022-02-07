@@ -1,5 +1,6 @@
 package me.pliexe.discordeconomybridge
 
+import me.pliexe.discordeconomybridge.discord.DiscordMember
 import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.Role
@@ -28,35 +29,16 @@ class ModeratorManager(private val main: DiscordEconomyBridge) {
 
     }
 
-    fun isModerator(member: Member): Boolean
+    fun isModerator(member: DiscordMember): Boolean
     {
         if(member.isOwner) return true
 
         if(main.config.isBoolean("ignorePermissionsForAdministrators"))
             if(main.config.getBoolean("ignorePermissionsForAdministrators"))
-                if(member.hasPermission(Permission.ADMINISTRATOR)) return true
+                if(member.isAdministrator()) return true
 
-        for(role in member.roles) {
-            if(roles.contains(role.id)) {
-                return true
-            }
-        }
-
-        return false
-    }
-
-    fun isModerator(member: github.scarsz.discordsrv.dependencies.jda.api.entities.Member): Boolean
-    {
-        if(member.isOwner) return true
-
-        if(main.config.isBoolean("ignorePermissionsForAdministrators"))
-            if(main.config.getBoolean("ignorePermissionsForAdministrators"))
-                if(member.hasPermission(github.scarsz.discordsrv.dependencies.jda.api.Permission.ADMINISTRATOR)) return true
-
-        for(role in member.roles) {
-            if(roles.contains(role.id)) {
-                return true
-            }
+        for(role in roles) {
+            if(member.rolesContain(role)) return true
         }
 
         return false

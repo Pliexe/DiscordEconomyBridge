@@ -24,7 +24,7 @@ class Help(main: DiscordEconomyBridge): Command(main) {
 
             if(event.member == null)
                 setDiscordPlaceholders(event.author, form)
-            else setDiscordPlaceholders(event.member, form)
+            else setDiscordPlaceholders(event.member!!, form)
         }).queue()
     }
 }

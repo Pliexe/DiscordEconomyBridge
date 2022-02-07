@@ -21,7 +21,7 @@ class RemoveMoney(main: DiscordEconomyBridge): Command(main) {
 
     override fun getCommandOptions(): CommandOptions {
         return CommandOptions()
-            .addOption(OptionType.INTEGER, "user", "The user that will lose the money!")
+            .addOption(OptionType.USER, "user", "The user that will lose the money!")
             .addOption(OptionType.NUMBER, "amount", "The amount of money to add!")
             .setDefaultEnabled(false)
     }
@@ -63,8 +63,8 @@ class RemoveMoney(main: DiscordEconomyBridge): Command(main) {
             val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)
             (if(event.member == null)
                 setPlaceholdersForDiscordMessage(event.author, player, form)
-            else setPlaceholdersForDiscordMessage(event.member, player, form))
+            else setPlaceholdersForDiscordMessage(event.member!!, player, form))
                 .replace("{amount_decrease}", formatMoney(amount, config.getString("Currency"), config.getBoolean("CurrencyLeftSide"), formatter))
-        })
+        }).queue()
     }
 }
