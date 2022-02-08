@@ -82,7 +82,7 @@ helpCommandEmbed:
   fields:
     "%discord_command_prefix%balance":
       text:
-        - "See a pleyer's current balance"
+        - "See a player's current balance"
         - "Usage: %discord_command_prefix%balance <username or uuid"
         - "Alias: %discord_command_prefix%bal"
       inline: false

@@ -941,7 +941,7 @@ class CommandEventData (
             }
         }
 
-    fun isNative(): Boolean {
+    private fun isNative(): Boolean {
         return type.ordinal < 3
     }
 
@@ -988,7 +988,7 @@ class CommandEventData (
     fun getOptionUser(name: String): DiscordUser? {
         return if(isNative())
         {
-            val user = slashCommandEventNative!!.options.find { it.name == name }?.asUser
+            val user = this.slashCommandEventNative!!.options.find { it.name == name }?.asUser
             if(user == null) null
             else DiscordUser(user)
         }
@@ -1054,7 +1054,7 @@ class CommandEventData (
     constructor(main: DiscordEconomyBridge, event: MessageReceivedEvent, commandName: String, prefix: String, args: List<String>) : this(main, Type.MessageNative, commandName, prefix, args, null, null, event, null, null, null)
     constructor(main: DiscordEconomyBridge, event: github.scarsz.discordsrv.dependencies.jda.api.events.message.MessageReceivedEvent, commandName: String, prefix: String, args: List<String>) : this(main, Type.MessageSRV, commandName, prefix, args, null, null, null, event, null, null)
     constructor(main: DiscordEconomyBridge, event: net.dv8tion.jda.api.events.interaction.SlashCommandEvent, commandName: String, prefix: String) : this(main, Type.SlashCommandNative, commandName, prefix, null, null, null, null, null, event, null)
-    constructor(main: DiscordEconomyBridge, event: SlashCommandEvent, commandName: String, prefix: String) : this(main, Type.SlashCommandNative, commandName, prefix, null, null, null, null, null, null, event)
+    constructor(main: DiscordEconomyBridge, event: SlashCommandEvent, commandName: String, prefix: String) : this(main, Type.SlashCommandSRV, commandName, prefix, null, null, null, null, null, null, event)
 
     fun sendMessage(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
         if(embed.isEmpty)
