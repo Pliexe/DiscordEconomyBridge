@@ -3,8 +3,11 @@ package me.pliexe.discordeconomybridge
 import de.leonhard.storage.Config
 import de.leonhard.storage.LightningBuilder
 import de.leonhard.storage.internal.settings.ConfigSettings
+import de.leonhard.storage.internal.settings.DataType
 import de.leonhard.storage.internal.settings.ReloadSettings
 import github.scarsz.discordsrv.DiscordSRV
+import me.clip.placeholderapi.PlaceholderAPI
+import me.pliexe.discordeconomybridge.checkers.checkForUpdates
 import me.pliexe.discordeconomybridge.commands.ClearSlashCommands
 import me.pliexe.discordeconomybridge.commands.HelpCommand
 import me.pliexe.discordeconomybridge.commands.LinkCommand
@@ -18,12 +21,17 @@ import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.plugin.java.JavaPlugin
+import org.bukkit.util.FileUtil
+import java.io.File
+import java.lang.NumberFormatException
+import java.util.logging.Logger
 
 class DiscordEconomyBridge : JavaPlugin() {
 
     companion object {
         var placeholderApiEnabled = false
         var discordSrvEnabled = false
+        lateinit var logger: Logger
     }
 
     private var jda: JDA? = null
@@ -32,26 +40,13 @@ class DiscordEconomyBridge : JavaPlugin() {
     val moderatorManager = ModeratorManager(this)
 //    val discordMessagesConfig = ConfigManager.getConfig("discord_messages.yml", this, "discord_messages.yml")
 
-    val pluginMessagesConfig: Config = LightningBuilder
-        .fromPath("plugin_messages", dataFolder.path)
-        .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
-        .setReloadSettings(ReloadSettings.MANUALLY)
-        .addInputStream(getResource("plugin_messages.yml"))
-        .createConfig()
+    lateinit var pluginMessagesConfig: Config
 
-    val discordMessagesConfig: Config = LightningBuilder
-        .fromPath("discord_messages", dataFolder.path)
-        .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
-//        .setReloadSettings(ReloadSettings.MANUALLY)
-        .addInputStream(getResource("discord_messages.yml"))
-        .createConfig()
+    lateinit var discordMessagesConfig: Config
 
-    val defaultConfig: Config = LightningBuilder
-        .fromPath("config", dataFolder.path)
-        .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
-        .setReloadSettings(ReloadSettings.MANUALLY)
-        .addInputStream(getResource("config.yml"))
-        .createConfig()
+    lateinit var defaultConfig: Config
+
+    var shutingDown = false
 
 //    val pluginMessagesConfig = ConfigManager.getConfig("plugin_messages.yml", this, "plugin_messages.yml")
 
@@ -90,13 +85,97 @@ class DiscordEconomyBridge : JavaPlugin() {
 
     override fun onEnable() {
 
+        DiscordEconomyBridge.logger = this.logger
+
+        defaultConfig = LightningBuilder
+            .fromPath("config", dataFolder.path)
+            .setReloadSettings(ReloadSettings.MANUALLY)
+            .setDataType(DataType.SORTED)
+            .addInputStream(getResource("config.yml"))
+            .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
+            .createConfig()
+
+        discordMessagesConfig = LightningBuilder
+            .fromPath("discord_messages", dataFolder.path)
+//            .setReloadSettings(ReloadSettings.MANUALLY)
+            .setDataType(DataType.SORTED)
+            .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
+            .addInputStream(getResource("discord_messages.yml"))
+            .createConfig()
+
+        pluginMessagesConfig = LightningBuilder
+            .fromPath("plugin_messages", dataFolder.path)
+//            .setReloadSettings(ReloadSettings.MANUALLY)
+            .setDataType(DataType.SORTED)
+            .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
+            .addInputStream(getResource("plugin_messages.yml"))
+            .createConfig()
+
+        if(defaultConfig.contains("VERSION")) {
+            try {
+                val version = defaultConfig.getString("VERSION")
+                if(version == "\${version}")
+                    defaultConfig.set("VERSION", description.version)
+                else if(description.version.replace(".", "").toInt() > version.replace(".", "").toInt()) {
+
+                    logger.info("Updating Configurations to latest version!")
+
+                    val backupFileConf = File(dataFolder.path, "config.yml.old")
+                    if(FileUtil.copy(defaultConfig.file, backupFileConf)) {
+                        defaultConfig.set("VERSION", description.version)
+                        defaultConfig.addDefaultsFromInputStream(getResource("config.yml"))
+
+                        val backupFileDM = File(dataFolder.path, "discord_messages.yml.old")
+                        if(FileUtil.copy(discordMessagesConfig.file, backupFileDM)) {
+                            discordMessagesConfig.addDefaultsFromInputStream(getResource("discord_messages.yml"))
+                        } else {
+                            logger.severe("Failed to create backup for discord_messages.yml! Skipping to next configuration...")
+                        }
+
+                        val backupFilePM = File(dataFolder.path, "plugin_messages.yml.old")
+                        if(FileUtil.copy(pluginMessagesConfig.file, backupFilePM)) {
+                            pluginMessagesConfig.addDefaultsFromInputStream(getResource("plugin_messages.yml"))
+                        } else {
+                            logger.severe("Failed to create backup for plugin_messages.yml!")
+                        }
+
+                        logger.info("Configurations updated. Old versions of them have been backed up as config_name.yml.old")
+                    } else {
+                        logger.severe("Failed to create backup for config.yml")
+                    }
+                }
+            } catch (e: ClassCastException) {
+                logger.severe("Field VERSION in config.yml is of invalid type! Setting it. Saving old config to config.yml.old")
+
+                val backupFile = File(dataFolder.path, "config.yml.old")
+                FileUtil.copy(defaultConfig.file, backupFile)
+                defaultConfig.set("VERSION", description.version)
+            } catch (e: NumberFormatException) {
+                logger.severe("Field VERSION in config.yml is of invalid type! Setting it. Saving old config to config.yml.old")
+
+                val backupFile = File(dataFolder.path, "config.yml.old")
+                FileUtil.copy(defaultConfig.file, backupFile)
+                defaultConfig.set("VERSION", description.version)
+            }
+        } else {
+            logger.severe("Missing VERSION from config.yml! Setting it. Saving old config to config.yml.old")
+
+            val backupFile = File(dataFolder.path, "config.yml.old")
+            FileUtil.copy(defaultConfig.file, backupFile)
+            defaultConfig.set("VERSION", description.version)
+        }
+
         if(!checkForConfigurations(this)) {
             server.pluginManager.disablePlugin(this)
             return
         }
 
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null)
+        {
             placeholderApiEnabled = true
+            if(!PlaceholderAPI.containsPlaceholders("%player_name%"))
+                logger.severe("Player placeholders are not installed inside PlaceholderAPI! Please install them using: /papi ecloud download Player")
+        }
 
 //        logger.info("TOKEN IS ${defaultConfig.getString("TOKEN")} : EXISTS: ${defaultConfig.isSet("TOKEN")}")
 
@@ -155,11 +234,29 @@ class DiscordEconomyBridge : JavaPlugin() {
         }
 
         getCommand("discordeconomybridge").executor = HelpCommand(this)
+
+        checkForUpdates(description.version)
     }
 
     override fun onDisable() {
+        shutingDown = false
+        logger.info("Unregistering commands!")
         if (discordSrvEnabled)
             DiscordSRV.api.unsubscribe(discordSrvListener)
+
+        commandHandler.getEvents().clear()
+        commandHandler.getMessageDeleteEvents().clear()
+        if(!discordSrvEnabled)
+            getJda()!!.shutdown()
+
+        if(commandHandler.getBets().size > 0)
+        {
+            logger.info("Restoring cancelled bets")
+            commandHandler.getBets().forEach { (key, value) ->
+                getEconomy().depositPlayer(server.getOfflinePlayer(key), value)
+            }
+        }
+        logger.info("Done.")
     }
 
 }

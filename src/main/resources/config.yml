@@ -1,10 +1,14 @@
-########################################
-########################################
+### +------------------------------+ ###
 ###                                  ###
 ###      Discord Economy Bridge      ###
 ###   Made by Pliexe/DiamondZombie   ###
 ###                                  ###
-########################################
+### +------------------------------+ ###
+
+# +-------------------------+ #
+# DO NOT TOUCH VERSION NUMBER #
+VERSION: "${version}"         #
+# +-------------------------+ #
 
 # DO NOT SHARE THE BOT TOKEN WITH ANYONE! If you are using DiscordSRV you can ignore this field!
 TOKEN: BOT_TOKEN
@@ -56,6 +60,11 @@ noDiscordSRVwarn: false
 maxBet: 100000000000000000
 minBet: 50
 
+# Timeout in seconds. The amount of time a command will wait for user input
+commandTimeout: 150
+# Timeout in seconds. The amount of time a command will wait for user input inside a game
+gameTimeout: 300
+
 ## Aliases
 
 aliases:
@@ -74,25 +83,19 @@ aliases:
   rockpaperscissors:
     - rps
 
-
-## Command customizations
-
-
 # Disabled commands
 #disabledCommands:
 #  - help
 
-##############################
-### Commands customization ###
-##############################
 
+### Commands customization ###
 # Command customization has been moved to discord_messages.yml
 
-#######################
+# +-----------------+ #
 ### Custom commands ###
-#######################
+# +-----------------+ #
 
-##############################
+# +------------------------+ #
 ### Available placeholders ###
 ###
 ### {messageContent} - The whole message's content
@@ -103,8 +106,7 @@ aliases:
 ### {joinDate} - Player's join date
 ###
 ###                        ###
-##############################
-
+# +------------------------+ #
 
 customCommands:
 #  say:

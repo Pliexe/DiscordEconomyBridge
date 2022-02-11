@@ -1,16 +1,13 @@
 package me.pliexe.discordeconomybridge.discord.handlers
 
-import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.ButtonClickEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.discord.*
 import me.pliexe.discordeconomybridge.discord.commands.*
 import me.pliexe.discordeconomybridge.getMultilineableString
-import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
 import org.bukkit.ChatColor
 import org.bukkit.entity.Player
-import java.awt.Color
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.HashMap
@@ -29,6 +26,9 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
     private val componentInteractionEvents = HashMap<String, (msg: ComponentInteractionEvent) -> Unit>()
     private val messageDeleteEvents = HashMap<String, (msg: MessageDeleteEvent) -> Unit>()
 
+    private val playingGame = mutableSetOf<String>()
+    private val bets = HashMap<UUID, Double>()
+
     init {
         customCommands?.forEach { commandName ->
             if(config.isList("customCommands.$commandName.aliases")) {
@@ -37,6 +37,26 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
                 }
             }
         }
+    }
+
+    fun add(bet: Double, playerUq: UUID) {
+        if(bets.containsKey(playerUq)) bets[playerUq] = bets[playerUq]!!.plus(bet)
+        else bets[playerUq] = bet
+    }
+
+    fun getBets(): HashMap<UUID, Double> {
+        return bets
+    }
+
+//    fun removeBets(vararg bets: UUID) {
+//        for(bet in bets)
+//            this.bets.remove(bet)
+//    }
+
+    fun getPlaying(): MutableSet<String> { return playingGame }
+
+    fun isPlaying(userId: String): Boolean {
+        return playingGame.contains(userId)
     }
 
     fun getCommand(name: String): Command? {
@@ -88,6 +108,32 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             }
     }
 
+    private fun runCommand(event: CommandEventData, cmd: Command) {
+        if(cmd.isGame && playingGame.contains(event.author.id))
+            return cmd.fail(event, "You are already playing an game!")
+
+        if(cmd.adminCommand && !main.moderatorManager.isModerator(event.member!!))
+            return cmd.noPermission(event)
+
+        try {
+            cmd.run(event)
+        } catch (e: Exception) {
+            if(cmd.isGame && playingGame.contains(event.author.id))
+                event.resetCooldowns()
+
+            if(cmd.isGame)
+                event.restoreBets()
+
+            e.printStackTrace()
+            event.sendYMLEmbed("errorMessage", {
+                setDiscordPlaceholders(
+                    event.member!!,
+                    setCommandPlaceholders(it, event.prefix, event.commandName, cmd.description, cmd.usage)
+                )
+            }).queue()
+        }
+    }
+
     fun runCommand(event: GuildMessageReceivedEvent)
     {
         if(event.author.isBot) return
@@ -133,6 +179,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             if(cmd == null) return
         }
 
+
         val eventData = CommandEventData(
             main,
             event,
@@ -141,11 +188,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             args
         )
 
-        if(cmd.adminCommand && !main.moderatorManager.isModerator(eventData.member!!))
-            return cmd.noPermission(eventData)
-
-
-        cmd.run(eventData)
+        runCommand(eventData, cmd)
     }
 
     fun runCommand(event: github.scarsz.discordsrv.dependencies.jda.api.events.message.guild.GuildMessageReceivedEvent)
@@ -201,11 +244,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             args
         )
 
-        if(cmd.adminCommand && !main.moderatorManager.isModerator(eventData.member!!))
-            return cmd.noPermission(eventData)
-
-
-        cmd.run(eventData)
+        runCommand(eventData, cmd)
     }
 
     fun runCommand(event: SlashCommandEvent)
@@ -222,10 +261,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             "/"
         )
 
-        if(cmd.adminCommand && !main.moderatorManager.isModerator(eventData.member!!))
-            return cmd.noPermission(eventData)
-
-        cmd.run(eventData)
+        runCommand(eventData, cmd)
     }
 
     fun runCommand(event: net.dv8tion.jda.api.events.interaction.SlashCommandEvent)
@@ -242,10 +278,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             "/"
         )
 
-        if(cmd.adminCommand && !main.moderatorManager.isModerator(eventData.member!!))
-            return cmd.noPermission(eventData)
-
-        cmd.run(eventData)
+        runCommand(eventData, cmd)
     }
 
     private fun customCommand(event: CommandEventData)

@@ -36,6 +36,12 @@ failMessage:
       text: "%discord_command_prefix%%discord_command_name% %discord_command_usage%"
   color: 0xb72d0e
 
+# Error message
+
+errorMessage:
+  color: "#e31e00"
+  description: "An error occurred :("
+
 ##########################
 # addmoney command embed #
 ##########################
@@ -168,7 +174,7 @@ coinflipCommandConfirmEmbed:
 coinflipCommandDeclineEmbed:
   content: "** **"
   color: "#d62400"
-  description: "%discord_other_username%. **%discord_user_username%** has declined the coinflip!"
+  description: "%discord_user_username%. **%discord_other_user_username%** has declined the coinflip!"
   fields:
     "Amount wagered":
       text: "{amount_wagered}"

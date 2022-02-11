@@ -2,7 +2,6 @@ package me.pliexe.discordeconomybridge.discord
 
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.clip.placeholderapi.PlaceholderAPI
-import me.pliexe.discordeconomybridge.filemanager.Config
 import me.pliexe.discordeconomybridge.isConfigSection
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
@@ -172,7 +171,7 @@ fun setDiscordPlaceholders(user: DiscordUser, text: String): String {
         .replace("%discord_user_discriminator%", user.discriminator)
         .replace("%discord_user_tag%", user.asTag)
         .replace("%discord_user_avatar_url%", user.avatarUrl)
-        .replace("%discord_user_id%", user.avatarUrl)
+        .replace("%discord_user_id%", user.id)
 }
 
 fun setDiscordPlaceholders(user: DiscordUser, other: DiscordUser, text: String): String {
@@ -181,7 +180,7 @@ fun setDiscordPlaceholders(user: DiscordUser, other: DiscordUser, text: String):
         .replace("%discord_other_user_discriminator%", other.discriminator)
         .replace("%discord_other_user_tag%", other.asTag)
         .replace("%discord_other_user_avatar_url%", other.avatarUrl)
-        .replace("%discord_other_user_id%", other.avatarUrl)
+        .replace("%discord_other_user_id%", other.id)
 }
 
 fun setCommandPlaceholders(text: String, prefix: String, commandName: String, description: String, usage: String): String {
@@ -260,17 +259,17 @@ fun getBool(value: Any?): Boolean? {
 fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
     val config = main.discordMessagesConfig
 
-    if(!config!!.contains(path))
+    if(!config.contains(path))
         throw Error("Missing path configuration ($path) in discord_messages.yml!")
 
-    if(!isConfigSection(config!!.get(path)))
+    if(!isConfigSection(config.get(path)))
         throw Error("Invalid configuration type ($path) in discord_messages.yml!")
 
     getStringOrStringList("$path.title", config)?.let { embed.setTitle(filter(it)) }
 
-    if(isConfigSection(config!!.get("$path.fields")))
+    if(isConfigSection(config.get("$path.fields")))
     {
-        val embedFields = config!!.singleLayerKeySet("$path.fields")
+        val embedFields = config.singleLayerKeySet("$path.fields")
 
         embedFields.forEach { fieldName ->
             try {
@@ -278,7 +277,7 @@ fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, f
                     embed.addField(
                         filter(fieldName),
                         filter(it),
-                        config!!.get("$path.fields.$fieldName.inline", false)
+                        config.get("$path.fields.$fieldName.inline", false)
                     )
                 }
             } catch (e: ClassCastException) {
@@ -324,18 +323,18 @@ fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, f
         throw Error("InvalidConfig")
     }
 
-    getString(config!!.get("$path.image"))?.let {
+    getString(config.get("$path.image"))?.let {
         embed.setImage(it)
     }
 
-    getString(config!!.get("$path.thumbnail"))?.let {
+    getString(config.get("$path.thumbnail"))?.let {
         embed.setThumbnail(it)
     }
 
     try {
-        if(isConfigSection(config!!.get("$path.author"))) {
+        if(isConfigSection(config.get("$path.author"))) {
             getStringOrStringList("$path.author.name", config)?.let {
-                embed.setFooter(filter(it), config!!.getString("$path.author.icon_url"))
+                embed.setFooter(filter(it), config.getString("$path.author.icon_url"))
             }
         }
     } catch (e: ClassCastException) {
@@ -344,7 +343,7 @@ fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, f
     }
 
     getStringOrStringList("$path.content", config)?.let {
-        embed.content = it
+        embed.content = filter(it)
     }
 
     return embed

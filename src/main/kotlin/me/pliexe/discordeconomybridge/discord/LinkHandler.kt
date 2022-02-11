@@ -16,15 +16,14 @@ class LinkHandler(val main: DiscordEconomyBridge) {
 
     private val toLink = HashMap<String, UUID>()
     private val timers = HashMap<String, TimerTask>()
-    private var useDSRV = false
+    private var useDSRV = true
 
     fun initNative() {
         jsonStorage = LightningBuilder
             .fromPath("linked_accounts", main.dataFolder.path)
             .createJson()
 
-        if(main.discordSRVActive && (if(main.config.isBoolean("useDiscordSRVLinking")) main.config.getBoolean("useDiscordSRVLinking") else false))
-            useDSRV = true
+        useDSRV = main.discordSRVActive && (if(main.config.isBoolean("useDiscordSRVLinking")) main.config.getBoolean("useDiscordSRVLinking") else false)
     }
 
     fun underWaitList(uuid: UUID): Boolean {
@@ -43,7 +42,7 @@ class LinkHandler(val main: DiscordEconomyBridge) {
     }
 
     fun getUuid(discordId: String): UUID? {
-        return if(jsonStorage == null || useDSRV)
+        return if(useDSRV)
             DiscordSRV.getPlugin().accountLinkManager.getUuid(discordId)
         else {
             if(isLinked(discordId))
@@ -69,15 +68,14 @@ class LinkHandler(val main: DiscordEconomyBridge) {
 
     fun isLinked(discordId: String): Boolean {
         return if(useDSRV)
-                DiscordSRV.getPlugin().accountLinkManager.isInCache(discordId)
+                DiscordSRV.getPlugin().accountLinkManager.getUuid(discordId) != null
             else
                 jsonStorage!!.contains(discordId)
     }
 
-
     fun isLinked(uuid: UUID): Boolean {
         if(useDSRV) {
-            return DiscordSRV.getPlugin().accountLinkManager.isInCache(uuid)
+            return DiscordSRV.getPlugin().accountLinkManager.getDiscordId(uuid) != null
         } else {
             val uuidStr = uuid.toString()
 

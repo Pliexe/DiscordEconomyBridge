@@ -25,6 +25,8 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
             .addOption(OptionType.NUMBER, "wager", "The amount of money to wager")
     }
 
+    override val isGame = true
+
     override fun run(event: CommandEventData) {
         if(!event.inGuild())
             return fail(event, "This command may only be run in a discord server (Guild)")
@@ -101,7 +103,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
             })).removeActinRows().queue()
         }
 
-        fun decline(bevent: ComponentInteractionEvent? = null) {
+        fun decline(bevent: ComponentInteractionEvent? = null, msg: Message? = null) {
             val embed = event.getYMLEmbed("coinflipCommandDeclineEmbed", {
                 val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, wagerPlayer, form)
@@ -112,7 +114,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
             })
 
             if(bevent == null)
-                event.sendMessage(embed).queue()
+                msg!!.editMessage(embed).queue()
             else bevent.editMessage(embed).removeActinRows().queue()
         }
 
@@ -123,53 +125,51 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                 .replace("%discord_other_tag%", challenger.user.asTag)
                 .replace("%discord_other_discriminator%", challenger.user.discriminator)
                 .replace("{amount_wagered}", formatMoney(wager, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
-        }).setActionRow(mutableListOf(
-            Button.success("accept", getStringOrStringList("coinflipButtonAccept", main.discordMessagesConfig) ?: "Accept"),
-            Button.danger("decline", getStringOrStringList("coinflipButtonDecline", main.discordMessagesConfig) ?: "Decline")
-        ))
-            .queue { message ->
+        }).setYesOrNoButtons(
+            getStringOrStringList("coinflipButtonAccept", main.discordMessagesConfig) ?: "Accept",
+            getStringOrStringList("coinflipButtonDecline", main.discordMessagesConfig) ?: "Decline"
+        ).queue { message ->
 
-                val collector = message.createInteractionCollector(300000, false)
+            message.awaitYesOrNo(main.pluginConfig.commandTimeout, { it.user.id ==  challenger.id}, { outcome, interaction, deleted ->
+                if(outcome) {
 
-                collector.onClick = {
-                    if(it.user.id != challenger.id) {
-                        it.replyEphemeral("You may not interact with this menu!").queue()
+                    val currentBalancePlayer = main.getEconomy().getBalance(wagerPlayer)
+
+                    if(wager > currentBalancePlayer)
+                        return@awaitYesOrNo fail(interaction!!, "You don't have enough money.")
+
+                    val currentBalanceOpp = main.getEconomy().getBalance(challengerPlayer)
+
+                    if(wager > currentBalanceOpp)
+                        return@awaitYesOrNo fail(interaction!!, "The opponent does not have enough money.")
+
+                    if(Random.nextInt(0, 2) > 0)
+                    {
+                        if(!main.getEconomy().hasAccount(challengerPlayer))
+                            main.getEconomy().createPlayerAccount(challengerPlayer)
+
+                        main.getEconomy().depositPlayer(challengerPlayer, wager)
+                        main.getEconomy().withdrawPlayer(wagerPlayer, wager)
+
+                        sendMsg(challenger, event.member!!, challengerPlayer, "tail", interaction!!)
                     } else {
-                        when(it.componentId) {
-                            "decline" -> {
-                                collector.stop()
-                                decline(it)
-                            }
-                            "accept" -> {
-                                collector.stop()
-                                if(Random.nextInt(0, 2) > 0)
-                                {
-                                    if(!main.getEconomy().hasAccount(challengerPlayer))
-                                        main.getEconomy().createPlayerAccount(challengerPlayer)
+                        if(!main.getEconomy().hasAccount(challengerPlayer))
+                            main.getEconomy().createPlayerAccount(challengerPlayer)
 
-                                    main.getEconomy().depositPlayer(challengerPlayer, wager)
-                                    main.getEconomy().withdrawPlayer(wagerPlayer, wager)
+                        main.getEconomy().depositPlayer(wagerPlayer, wager)
+                        main.getEconomy().withdrawPlayer(challengerPlayer, wager)
 
-                                    sendMsg(challenger, event.member!!, challengerPlayer, "tail", it)
-                                } else {
-                                    if(!main.getEconomy().hasAccount(challengerPlayer))
-                                        main.getEconomy().createPlayerAccount(challengerPlayer)
-
-                                    main.getEconomy().depositPlayer(wagerPlayer, wager)
-                                    main.getEconomy().withdrawPlayer(challengerPlayer, wager)
-
-                                    sendMsg(event.member!!, challenger, wagerPlayer, "head", it)
-                                }
-                            }
-                        }
+                        sendMsg(event.member!!, challenger, wagerPlayer, "head", interaction!!)
                     }
                 }
-
-                collector.onDone = { type, _ ->
-                    if(type == InteractionCollector.DoneType.Expired) {
-                        decline()
+                else if(!deleted) {
+                    if(interaction == null) {
+                        decline(null, message)
+                    } else {
+                        decline(interaction)
                     }
                 }
+            })
         }
     }
 }

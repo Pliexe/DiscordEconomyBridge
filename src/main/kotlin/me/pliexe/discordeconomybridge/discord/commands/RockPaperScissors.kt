@@ -24,6 +24,8 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
             .addOption(OptionType.INTEGER, "rounds", "Amount of rounds. If not set default will be 3!", false)
     }
 
+    override val isGame = true
+
     override fun run(event: CommandEventData) {
         if(!main.linkHandler.isLinked(event.author.id))
             return fail(event, "Your account is not linked to discord!")
@@ -93,7 +95,13 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
             if(!main.linkHandler.isLinked(opponent.id))
                 return fail(event, "The opponent you challenged does not have his account linked to discord!")
             opponentPlayer = UniversalPlayer(Bukkit.getPlayer(main.linkHandler.getUuid(opponent.id)) ?: Bukkit.getOfflinePlayer(main.linkHandler.getUuid(opponent.id))!!)
+            if(bet > opponentPlayer.getBalance(main))
+                return fail(event, "The opponent does not have enough money to proceed with the bet!")
+        } else {
+            event.addBets(bet, player)
         }
+
+        event.addCooldowns(event.author.id)
 
         // Rock = 0, Paper = 1, Scissors = 2
         // draw - 0
@@ -169,22 +177,21 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
         }
 
         fun gameOver(interactionEvent: ComponentInteractionEvent?, playerWins: Boolean, message: Message? = null) {
+            if(main.shutingDown) return
 
             if(opponent == null) {
                 if(playerWins) {
-                    main.getEconomy().depositPlayer(player, bet)
-                } else {
-                    main.getEconomy().withdrawPlayer(player, bet)
+                    main.getEconomy().depositPlayer(player, bet * 2)
                 }
             } else {
                 if(playerWins) {
-                    main.getEconomy().depositPlayer(player, bet)
-                    opponentPlayer!!.withdrawPlayer(main, bet)
+                    main.getEconomy().depositPlayer(player, bet * 2)
                 } else {
-                    opponentPlayer!!.depositPlayer(main, bet)
-                    main.getEconomy().withdrawPlayer(player, bet)
+                    opponentPlayer!!.depositPlayer(main, bet * 2)
                 }
             }
+
+            event.removeBets()
 
             val embed = if(opponent == null) event.getYMLEmbed(if(playerWins) "rpsCommand.messages.gameOverBotPlayerWin" else "rpsCommand.messages.gameOverBotPlayerLose", {
                 val form = setCommandPlaceholders(
@@ -225,9 +232,15 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
             if(interactionEvent == null)
                 message!!.editMessage(embed).removeActinRows().queue()
             else interactionEvent.editMessage(embed).removeActinRows().queue()
+
+            event.resetCooldowns()
         }
 
         fun gameDraw(interactionEvent: ComponentInteractionEvent?, message: Message? = null) {
+            if(main.shutingDown) return
+
+            event.restoreBets()
+
             val embed = if(opponent == null) event.getYMLEmbed("rpsCommand.messages.drawBot", {
                 val form = setCommandPlaceholders(
                     it
@@ -256,6 +269,8 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
             if(interactionEvent == null)
                 message!!.editMessage(embed).removeActinRows().queue()
             else interactionEvent.editMessage(embed).removeActinRows().queue()
+
+            event.resetCooldowns()
         }
 
 
@@ -301,7 +316,7 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                             Button.primary("p", rcpPaperButtonLabel),
                             Button.primary("s", rcpScissorButtonLabel)
                         ))).queue { message ->
-                            val collector = message.createInteractionCollector(300000, true)
+                            val collector = message.createInteractionCollector(main.pluginConfig.gameTimeout, true)
 
                             fun setOutcome(outcome: Int) {
                                 when (outcome) {
@@ -323,14 +338,27 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                             collector.onDone = { type, _ ->
                                 if(type == InteractionCollector.DoneType.Expired) {
 
-                                    val playerP = calculatePoints(playerPlayed)
-                                    val bot = calculatePoints(opponentPlayed)
-
-                                    if(playerP > bot)
-                                        gameOver(null, true, message)
-                                    else if(bot > playerP)
+                                    if(opponent == null) {
                                         gameOver(null, false, message)
-                                    else gameDraw(null, message)
+                                    } else {
+                                        if(lockedInP1 || lockedInP2) {
+                                            if(lockedInP1)
+                                                gameOver(null, true, message)
+                                            else gameOver(null, false, message)
+                                        } else {
+                                            val playerP = calculatePoints(playerPlayed)
+                                            val opp = calculatePoints(opponentPlayed)
+
+                                            if(playerP > opp)
+                                                gameOver(null, true, message)
+                                            else if(opp > playerP)
+                                                gameOver(null, false, message)
+                                            else gameDraw(null, message)
+                                        }
+                                    }
+                                } else if(type == InteractionCollector.DoneType.MessageDeleted) {
+                                    event.restoreBets()
+                                    event.resetCooldowns()
                                 }
                             }
 
@@ -431,9 +459,24 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                     .replace("{rounds}", rounds.toString())
             }).setYesOrNoButtons(getString(main.discordMessagesConfig.get("rpsCommand.buttonAcceptLabel")) ?: "Accept", getString(main.discordMessagesConfig.get("rpsCommand.buttonDeclineLabel")) ?: "Decline")
                 .queue { message ->
-                    message.awaitYesOrNo(300000, { it.user.id == opponent.id }) { outcome, interaction, deleted ->
+                    message.awaitYesOrNo(main.pluginConfig.commandTimeout, { it.user.id == opponent.id }) { outcome, interaction, deleted ->
                         if(outcome) {
-                            showMessage(interaction, true)
+                            if(main.commandHandler.isPlaying(opponent.id))
+                            {
+                                event.resetCooldowns()
+                                return@awaitYesOrNo fail(interaction!!, "The user is already playing a game...")
+                            }
+                            else {
+                                if(bet > main.getEconomy().getBalance(player))
+                                    return@awaitYesOrNo fail(interaction!!, "${event.author.name} does not have enough money to start the game.")
+
+                                if(bet > opponentPlayer!!.getBalance(main))
+                                    return@awaitYesOrNo fail(interaction!!, "${event.author.name} does not have enough money to start the game.")
+
+                                event.addCooldowns(opponent.id)
+                                event.addBets(bet, UniversalPlayer(player), opponentPlayer)
+                                showMessage(interaction, true)
+                            }
                         }
                         else if(!deleted) {
                             if(interaction == null) {
@@ -447,7 +490,9 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                                     setPlaceholdersForDiscordMessage(event.member!!, opponent, UniversalPlayer(player), opponentPlayer!!, form)
                                 })).removeActinRows().queue()
                             }
-
+                            event.resetCooldowns()
+                        } else {
+                            event.resetCooldowns()
                         }
                     }
             }

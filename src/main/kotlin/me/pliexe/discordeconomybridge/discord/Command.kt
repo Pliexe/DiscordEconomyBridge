@@ -18,22 +18,13 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction
 import net.dv8tion.jda.api.requests.restaction.WebhookMessageUpdateAction
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyAction
 import net.dv8tion.jda.api.requests.restaction.interactions.UpdateInteractionAction
+import org.bukkit.OfflinePlayer
 import org.bukkit.Server
 import org.bukkit.configuration.file.FileConfiguration
 import java.awt.Color
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.concurrent.schedule
-
-/*class DiscordUser (
-    val username: String,
-    val id: String,
-    val avatarURL: String
-        )
-
-class DiscordMember (
-    val nick: String?
-        ) {}*/
 
 class DiscordUser(
     val userNative: User?,
@@ -248,6 +239,18 @@ class MessageAction(val type: Type,
             Type.SRVSlashCommand -> replyActionSRV!!.setContent(content)
             Type.UpdateInteractionActionNative -> updateInteractionActionNative!!.setContent(content)
             Type.UpdateInteractionActionSRV -> updateInteractionActionSRV!!.setContent(content)
+        }
+        return this
+    }
+
+    fun removeEmbeds(): me.pliexe.discordeconomybridge.discord.MessageAction {
+        when (type) {
+            Type.NativeCommand -> messageActionNative!!.setEmbeds()
+            Type.SRVCommand -> messageActionSRV!!.setEmbeds()
+            Type.NativeSlashCommand -> replyActionNative!!.addEmbeds()
+            Type.SRVSlashCommand -> replyActionSRV!!.addEmbeds()
+            Type.UpdateInteractionActionNative -> updateInteractionActionNative!!.setEmbeds()
+            Type.UpdateInteractionActionSRV -> updateInteractionActionSRV!!.setEmbeds()
         }
         return this
     }
@@ -941,6 +944,67 @@ class CommandEventData (
             }
         }
 
+    private lateinit var bets: HashMap<UUID, Double>
+
+    fun restoreBets() {
+        if(this::bets.isInitialized)
+        {
+            for((key, _) in bets)
+                main.commandHandler.getBets().remove(key)
+            bets.forEach { (key, value) ->
+                main.getEconomy().depositPlayer(main.server.getOfflinePlayer(key), value)
+            }
+            bets.clear()
+        }
+    }
+
+    fun removeBets() {
+        if(this::bets.isInitialized)
+        {
+            for((key, _) in bets)
+                main.commandHandler.getBets().remove(key)
+
+            bets.clear()
+        }
+    }
+
+    fun addBets(amount: Double, vararg users: OfflinePlayer) {
+        if(!this::bets.isInitialized)
+            bets = hashMapOf()
+        for(user in users)
+        {
+            bets[user.uniqueId] = amount
+            main.getEconomy().withdrawPlayer(user, amount)
+            main.commandHandler.add(amount, user.uniqueId)
+        }
+    }
+
+    fun addBets(amount: Double, vararg users: UniversalPlayer) {
+        if(!this::bets.isInitialized)
+            bets = hashMapOf()
+        for(user in users)
+        {
+            bets[user.uniqueId] = amount
+            user.withdrawPlayer(main, amount)
+        }
+    }
+
+    private lateinit var inGame: MutableSet<String>
+
+    fun resetCooldowns() {
+        if(this::inGame.isInitialized)
+            inGame.forEach {
+                main.commandHandler.getPlaying().remove(it)
+            }
+    }
+
+    fun addCooldowns(vararg userId: String) {
+        if(!this::inGame.isInitialized)
+            inGame = mutableSetOf()
+        inGame.addAll(userId)
+        main.commandHandler.getPlaying().addAll(userId)
+    }
+
     private fun isNative(): Boolean {
         return type.ordinal < 3
     }
@@ -1113,6 +1177,8 @@ abstract class Command(protected val main: DiscordEconomyBridge) {
 
     open val adminCommand = false
 
+    open val isGame = false
+
     fun getSlashCommandDataNative(): CommandData {
         return getCommandOptions().toNative(name, description)
     }
@@ -1130,7 +1196,19 @@ abstract class Command(protected val main: DiscordEconomyBridge) {
                 setDiscordPlaceholders(event.author, form)
             else
                 setDiscordPlaceholders(event.member!!, form)
-        }).queue()
+        }).removeActinRows().queue()
+    }
+
+    fun fail(event: ComponentInteractionEvent, message: String) {
+        event.editMessage(event.getYMLEmbed("failMessage", {
+            val form = setCommandPlaceholders(it, main.defaultConfig.getString("PREFIX"), name, description, usage)
+                .replace("{message}", message)
+
+            if(event.member == null)
+                setDiscordPlaceholders(event.user, form)
+            else
+                setDiscordPlaceholders(event.member!!, form)
+        })).removeActinRows().queue()
     }
 
     fun noPermission(event: CommandEventData)

@@ -5,7 +5,6 @@ import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.requests.GatewayIntent
-import org.bukkit.Bukkit
 import javax.security.auth.login.LoginException
 
 fun registerClient(main: DiscordEconomyBridge, defaultConfig: de.leonhard.storage.Config, token: String): JDA? {
@@ -52,7 +51,7 @@ fun getActivity(defaultConfig: de.leonhard.storage.Config): Activity? {
             }
         } else null
     } catch (e: ClassCastException) {
-        Bukkit.getLogger().severe("Type statusType or statusMessage is not a text (string). The plugin will continue to load.")
+        DiscordEconomyBridge.logger.severe("Type statusType or statusMessage is not a text (string). The plugin will continue to load.")
         null
     }
 }

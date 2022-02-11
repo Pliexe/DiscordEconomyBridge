@@ -32,6 +32,8 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             .addOption(OptionType.NUMBER, "bet", "Amount to bet")
     }
 
+    override val isGame = true
+
     override fun run(event: CommandEventData) {
         var bet = if(event.isSlashCommand()) {
             event.getOptionDouble("bet")!!
@@ -65,6 +67,9 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
         if(bet > currentBalance)
             return fail(event, "You don't have enough money to bet the amount specified!")
 
+        event.addCooldowns(event.author.id)
+        event.addBets(bet, player)
+
         val currentDeck = template.toMutableList()
         currentDeck.shuffle()
 
@@ -91,17 +96,11 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
         var msg: Message? = null
 
         fun doTransaction(won: Boolean) {
-            val onlinePlayer = main.server.getPlayer(uuid)
-            if(onlinePlayer == null) {
-                val offlinePlayer = main.server.getOfflinePlayer(uuid)
-                if(won)
-                    main.getEconomy().depositPlayer(offlinePlayer, bet)
-                else main.getEconomy().withdrawPlayer(offlinePlayer, bet)
-            } else {
-                if(won)
-                    main.getEconomy().depositPlayer(onlinePlayer, bet)
-                else main.getEconomy().withdrawPlayer(onlinePlayer, bet)
-            }
+            if(main.shutingDown) return
+            if(won)
+                main.getEconomy().depositPlayer(player, bet * 2)
+            event.removeBets()
+            event.resetCooldowns()
         }
 
         fun blackjackOutcome(enemy: Boolean, bEvent: ComponentInteractionEvent? = null) {
@@ -129,6 +128,10 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
         }
 
         fun draw(blackjack: Boolean, bEvent: ComponentInteractionEvent? = null) {
+            if(main.shutingDown) return
+
+            event.restoreBets()
+
             val embed = event.getYMLEmbed(if(blackjack) "blackjackCommandDrawBlackjackOutcomeEmbed" else "blackjackCommandDrawOutcomeEmbed", { text ->
 
                 val form = setCommandPlaceholders(text, event.prefix, event.commandName, description, usage)
@@ -151,6 +154,8 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             }
             else
                 bEvent.editMessage(embed).removeActinRows().queue()
+
+            event.resetCooldowns()
         }
 
         fun bust(enemy: Boolean, bEvent: ComponentInteractionEvent? = null) {
@@ -255,9 +260,7 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
                     )).queue { message ->
                         msg = message
 
-                        message.editMessage("TEST WORKS")
-
-                        val collector = message.createInteractionCollector(300000, true)
+                        val collector = message.createInteractionCollector(main.pluginConfig.gameTimeout, true)
 
                         fun hit(bEvent: ComponentInteractionEvent) {
                             yourCards.add(currentDeck.removeAt(0))

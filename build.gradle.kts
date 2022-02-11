@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.pliexe.discordeconomybridge"
-version = "3.1"
+version = "3.3"
 
 repositories {
     mavenCentral()
@@ -33,6 +33,8 @@ dependencies {
 
     api("ch.qos.logback:logback-classic:1.2.10")
     api("com.github.simplix-softworks:simplixstorage:3.2.4")
+
+    implementation ("com.google.code.gson:gson:2.8.9")
 
     implementation("net.dv8tion:JDA:4.4.0_350") {
         exclude("opus-java")

@@ -61,5 +61,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
             return fail(event, "This player does not have an account")
 
         sendMsg(UniversalPlayer(offlinePlayer))
+
+        return
     }
 }

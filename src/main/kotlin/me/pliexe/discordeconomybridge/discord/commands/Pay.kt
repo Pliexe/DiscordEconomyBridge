@@ -46,10 +46,9 @@ class Pay(main: DiscordEconomyBridge): Command(main) {
             reciever = event.getMemberMention(0)
 
             amount = event.args[1].toDoubleOrNull() ?: return fail(event, "Amount may only be an numeric value!")
-
-            if(amount <= 0) return fail(event, "You may not send 0 or less money!")
         }
 
+        if(amount <= 0) return fail(event, "You may not send 0 or less money!")
         if(reciever.id == event.author.id)
             return fail(event, "You may not send money to yourself!")
 
@@ -63,7 +62,7 @@ class Pay(main: DiscordEconomyBridge): Command(main) {
         if(senderBalance < amount)
             return fail(event, "You don't have enough money to send that amount of cash")
 
-        val recieverPlayer = main.linkHandler.getUuid(reciever.id)?.let { Bukkit.getOfflinePlayer(it) } ?: return fail(event, "The player you are trying to send money does not have his account linked!")
+        val recieverPlayer = main.linkHandler.getUuid(reciever.id)?.let { Bukkit.getOfflinePlayer(it) } ?: return fail(event, "The player you are trying to send money does not have their account linked!")
 
         if(!main.getEconomy().hasAccount(recieverPlayer))
             main.getEconomy().createPlayerAccount(recieverPlayer)
