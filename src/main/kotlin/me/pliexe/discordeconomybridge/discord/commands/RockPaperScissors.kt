@@ -93,7 +93,7 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
         if(opponent != null)
         {
             if(!main.linkHandler.isLinked(opponent.id))
-                return fail(event, "The opponent you challenged does not have his account linked to discord!")
+                return fail(event, "The opponent you challenged does not have their account linked to discord!")
             opponentPlayer = UniversalPlayer(Bukkit.getPlayer(main.linkHandler.getUuid(opponent.id)) ?: Bukkit.getOfflinePlayer(main.linkHandler.getUuid(opponent.id))!!)
             if(bet > opponentPlayer.getBalance(main))
                 return fail(event, "The opponent does not have enough money to proceed with the bet!")

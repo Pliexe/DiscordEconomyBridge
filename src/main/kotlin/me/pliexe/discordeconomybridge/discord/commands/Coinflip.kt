@@ -77,7 +77,7 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
             return fail(event, "You don't have this much money to wager!")
 
         val challengerUuid = main.linkHandler.getUuid(challenger.id)
-            ?: return fail(event, "The user that you're trying to challenge does not have his account linked!")
+            ?: return fail(event, "The user that you're trying to challenge does not have their account linked!")
 
         val challengerPlayer = server.getOfflinePlayer(challengerUuid)
 

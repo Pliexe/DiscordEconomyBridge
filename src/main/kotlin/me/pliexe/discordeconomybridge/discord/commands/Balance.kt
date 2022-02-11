@@ -37,7 +37,7 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
         }
 
         val uuid: UUID = main.linkHandler.getUuid(user.id)
-            ?: return fail(event, "This user does not have his account linked!")
+            ?: return fail(event, "This user does not have their account linked!")
 
         fun sendMsg(player: UniversalPlayer) {
             val formatter = DecimalFormat("#,###.##")

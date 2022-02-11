@@ -50,7 +50,7 @@ class AddMoney(main: DiscordEconomyBridge): Command(main) {
         }
 
         val uuid = main.linkHandler.getUuid(user.id)
-            ?: return fail(event, "This user does not have his account linked!")
+            ?: return fail(event, "This user does not have their account linked!")
 
         val player = UniversalPlayer.getByUUID(uuid)
 
