@@ -1,5 +1,6 @@
 package me.pliexe.discordeconomybridge.discord
 
+import de.leonhard.storage.Config
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.clip.placeholderapi.PlaceholderAPI
 import me.pliexe.discordeconomybridge.isConfigSection
@@ -8,6 +9,7 @@ import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
 import java.awt.Color
 import java.util.*
+import java.util.logging.Logger
 
 // Matches any patter that is: condition ? word : word
 val regexScriptValidate = Regex("^[^?]+\\?[^:]+:[^:]+\$")
@@ -48,6 +50,38 @@ class UniversalPlayer(
                 UniversalPlayer(offlinePlayer)
             } else UniversalPlayer(player)
         }
+
+        fun getByUUIDorNull(uuid: UUID): UniversalPlayer? {
+            val player = Bukkit.getPlayer(uuid)
+            return if(player == null) {
+                val offlinePlayer = Bukkit.getOfflinePlayer(uuid) ?: return null
+                UniversalPlayer(offlinePlayer)
+            } else UniversalPlayer(player)
+        }
+
+        fun getByUsername(username: String): UniversalPlayer? {
+            return Bukkit.getPlayer(username)?.let { UniversalPlayer(it) } ?: run {
+                DiscordEconomyBridge.userCache.getString(username)?.let { uuid ->
+                    try {
+                        Bukkit.getOfflinePlayer(UUID.fromString(uuid))?.let { UniversalPlayer(it) }
+                    } catch (e: IllegalArgumentException) {
+                        null
+                    }
+                }
+            }
+        }
+
+        fun getByString(getter: String): UniversalPlayer? {
+            return try {
+                getByUsername(getter) ?: getByUUIDorNull(UUID.fromString(getter))
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        }
+    }
+
+    override fun toString(): String {
+        return name
     }
 
     val name: String
@@ -66,9 +100,10 @@ class UniversalPlayer(
     }
 
     fun getBalance(main: DiscordEconomyBridge): Double {
-        return if(onlinePlayer == null)
-            main.getEconomy().getBalance(offlinePlayer!!)
-        else main.getEconomy().getBalance(onlinePlayer)
+        return if(onlinePlayer == null){
+            if(main.getEconomy().hasAccount(offlinePlayer)) main.getEconomy().getBalance(offlinePlayer!!) else 0.0
+        }
+        else if(main.getEconomy().hasAccount(onlinePlayer)) main.getEconomy().getBalance(onlinePlayer) else 0.0
     }
 
     fun createEconomyAccountIfNotPresent(main: DiscordEconomyBridge) {
@@ -257,8 +292,10 @@ fun getBool(value: Any?): Boolean? {
 }
 
 fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
-    val config = main.discordMessagesConfig
+    return getYMLEmbed(main.discordMessagesConfig, main.logger, embed, path, filter, resolveScript, ignoreDescription)
+}
 
+fun getYMLEmbed(config: Config, logger: Logger, embed: DiscordEmbed, path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
     if(!config.contains(path))
         throw Error("Missing path configuration ($path) in discord_messages.yml!")
 
@@ -281,7 +318,7 @@ fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, f
                     )
                 }
             } catch (e: ClassCastException) {
-                main.logger.severe("Invalid embed field configuration at $path.fields.$fieldName.text")
+                logger.severe("Invalid embed field configuration at $path.fields.$fieldName.text")
                 throw Error("InvalidConfig")
             }
         }
@@ -302,7 +339,7 @@ fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, f
                 } else embed.setColor(Color.decode(value))
             }
         } catch (e: ClassCastException) {
-            main.server.logger.severe("Invalid embed color configuration at $path.color!")
+            logger.severe("Invalid embed color configuration at $path.color!")
             throw Error("InvalidConfig")
         }
     }
@@ -319,7 +356,7 @@ fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, f
             }
         }
     } catch (e: ClassCastException) {
-        main.server.logger.severe("Invalid embed footer configuration! $path.footer")
+        logger.severe("Invalid embed footer configuration! $path.footer")
         throw Error("InvalidConfig")
     }
 
@@ -338,7 +375,7 @@ fun getYMLEmbed(main: DiscordEconomyBridge, embed: DiscordEmbed, path: String, f
             }
         }
     } catch (e: ClassCastException) {
-        main.server.logger.severe("Invalid embed author configuration! $path.author")
+        logger.severe("Invalid embed author configuration! $path.author")
         throw Error("InvalidConfig")
     }
 

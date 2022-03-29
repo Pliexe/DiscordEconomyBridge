@@ -41,7 +41,7 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
                 var updated = 0
                 val updateCommands = guild.updateCommands()
                 main.commandHandler.getCommands().forEach { (key, value) ->
-                    if(!retrievedCommands.any {it.name == key}) {
+                    if(!main.getClearCmds() && !retrievedCommands.any {it.name == key}) {
                         updateCommands.addCommands(value.getSlashCommandDataSRV())
                         updated++
                     }

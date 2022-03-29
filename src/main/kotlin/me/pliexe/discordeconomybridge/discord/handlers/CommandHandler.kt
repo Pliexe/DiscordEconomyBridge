@@ -4,11 +4,10 @@ import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCom
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.discord.*
 import me.pliexe.discordeconomybridge.discord.commands.*
-import me.pliexe.discordeconomybridge.getMultilineableString
+import me.pliexe.discordeconomybridge.isConfigSection
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
 import org.bukkit.ChatColor
-import org.bukkit.entity.Player
-import java.text.SimpleDateFormat
+import java.lang.StringBuilder
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -19,8 +18,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
     private val server = main.server
 
     private val disabledCommands = if(config.isList("disabledCommands")) config.getStringList("disabledCommands") else null
-    private val customCommands = if(config.isConfigurationSection("customCommands")) config.getConfigurationSection("customCommands").getKeys(false) else null
-    private val customCommandAliases = HashMap<String, String>()
     private val commandAliases = HashMap<String, String>()
 
     private val componentInteractionEvents = HashMap<String, (msg: ComponentInteractionEvent) -> Unit>()
@@ -28,16 +25,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
     private val playingGame = mutableSetOf<String>()
     private val bets = HashMap<UUID, Double>()
-
-    init {
-        customCommands?.forEach { commandName ->
-            if(config.isList("customCommands.$commandName.aliases")) {
-                config.getStringList("customCommands.$commandName.aliases").forEach { alias ->
-                    customCommandAliases[alias] = commandName
-                }
-            }
-        }
-    }
 
     fun add(bet: Double, playerUq: UUID) {
         if(bets.containsKey(playerUq)) bets[playerUq] = bets[playerUq]!!.plus(bet)
@@ -91,6 +78,41 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         loadCommand(Coinflip(main))
         loadCommand(Blackjack(main))
         loadCommand(RockPaperScissors(main))
+
+        main.customCommandsConfig.get("commands").also {
+            if(isConfigSection(it)) {
+                main.customCommandsConfig.singleLayerKeySet("commands").forEach { name ->
+
+                    val inputSec = main.customCommandsConfig.getSection("commands.$name.inputs")
+
+
+                    val usage = StringBuilder()
+
+                    fun addInputToUsage(nm: String, default: String) {
+                        val req = inputSec.getOrDefault("$nm.required", true)
+                        usage.append(if(req) " <" else " [")
+                        usage.append(inputSec.getOrDefault("$nm.name", default))
+                        usage.append(if(req) ">" else "]")
+                    }
+
+                    inputSec.singleLayerKeySet().forEach { nm ->
+                        when(inputSec.getString("$nm.type")) {
+                            "MinecraftPlayer" -> addInputToUsage(nm, "minecraftPlayer")
+                            "Double", "Number" -> addInputToUsage(nm, "number")
+                            "WholeNumber", "Integer", "Int" -> addInputToUsage(nm, "whole_number")
+                            "DiscordUser" -> addInputToUsage(nm, "discord_user")
+                            "DiscordMember" -> addInputToUsage(nm, "discord_member")
+                        }
+                    }
+
+                    val cmd = CustomCommand(main, name, main.customCommandsConfig.getString("commands.$name.description") ?: "No description", usage.toString().trim())
+
+                    cmd.loadArguments(main.customCommandsConfig.getSection("commands.$name.inputs"))
+
+                    loadCommand(cmd)
+                }
+            }
+        }
     }
 
     fun loadAliases()
@@ -148,27 +170,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
         val args = rawArgs.subList(1, rawArgs.size)
 
-        if(customCommands != null)
-        {
-            var cmd: String? = if(customCommands.contains(command)) command else null
-            if(cmd == null) {
-                cmd = customCommandAliases[command]
-            }
-
-            if(cmd != null)
-            {
-                val eventData = CommandEventData(
-                    main,
-                    event,
-                    cmd,
-                    prefix,
-                    args
-                )
-                customCommand(eventData)
-                return
-            }
-        }
-
         var cmd = commands[command]
 
         if(cmd == null)
@@ -204,27 +205,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             if(disabledCommands.contains(command)) return
 
         val args = rawArgs.subList(1, rawArgs.size)
-
-        if(customCommands != null)
-        {
-            var cmd: String? = if(customCommands.contains(command)) command else null
-            if(cmd == null) {
-                cmd = customCommandAliases[command]
-            }
-
-            if(cmd != null)
-            {
-                val eventData = CommandEventData(
-                    main,
-                    event,
-                    cmd,
-                    prefix,
-                    args
-                )
-                customCommand(eventData)
-                return
-            }
-        }
 
         var cmd = commands[command]
 
@@ -279,146 +259,5 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         )
 
         runCommand(eventData, cmd)
-    }
-
-    private fun customCommand(event: CommandEventData)
-    {
-        val path = "customCommands.${event.commandName}"
-
-        if(config.isBoolean("$path.adminCommand"))
-            if(config.getBoolean("$path.adminCommand"))
-                if(!main.moderatorManager.isModerator(event.member!!)) {
-                    event.sendYMLEmbed("noPermissionMessage", {
-                        val form = setCommandPlaceholders(it, main.defaultConfig.getString("PREFIX"), event.commandName, "Custom command", "unknown")
-
-                        if(event.member == null)
-                            setDiscordPlaceholders(event.author, form)
-                        else setDiscordPlaceholders(event.member!!, form)
-                    }).queue()
-                    return
-                }
-
-        if(config.isBoolean("$path.requiresInput"))
-            if(config.getBoolean("$path.requiresInput"))
-                if(event.args!!.isEmpty()) {
-                    event.sendYMLEmbed("failMessage", {
-                        val form = setCommandPlaceholders(it, main.defaultConfig.getString("PREFIX"), event.commandName, "Custom command", "")
-                            .replace("{message}", "This command requires any kind of input!")
-
-                        if(event.member == null)
-                            setDiscordPlaceholders(event.author, form)
-                        else
-                            setDiscordPlaceholders(event.member!!, form)
-                    }).queue()
-                    return
-                }
-
-        val embedExists = config.isConfigurationSection("$path.embed")
-
-        val content = if(embedExists) null else getMultilineableString(config, "$path.content")
-            ?.replace("{messageContent}", event.message!!.content)
-            ?.replace("{messageContentWithoutCommand}", event.message!!.content.substring(event.prefix.length+event.commandName.length+1))
-
-        if(content == null && !embedExists) {
-            event.sendYMLEmbed("failMessage", {
-                val form = setCommandPlaceholders(it, main.defaultConfig.getString("PREFIX"), event.commandName, "Custom command", "")
-                    .replace("{message}", "Invalid yaml configuration. Embed or Content must be present!")
-
-                if(event.member == null)
-                    setDiscordPlaceholders(event.author, form)
-                else
-                    setDiscordPlaceholders(event.member!!, form)
-            }).queue()
-            return
-        }
-
-        var player: Player? = null
-        var inputs: List<String>? = null
-
-        if(config.isList("$path.inputs")) {
-            inputs = config.getStringList("$path.inputs").filterNotNull()
-
-
-            if(event.args!!.isEmpty() && inputs.isNotEmpty())
-            {
-                event.sendYMLEmbed("failMessage", {
-                    val form = setCommandPlaceholders(it, main.defaultConfig.getString("PREFIX"), event.commandName, "Custom command", "")
-                        .replace("{message}", "No arguments provided!\nUsage: ${event.prefix}${event.commandName} ${inputs.joinToString(" ")}")
-
-                    if(event.member == null)
-                        setDiscordPlaceholders(event.author, form)
-                    else
-                        setDiscordPlaceholders(event.member!!, form)
-                }).queue()
-                return
-            }
-
-            inputs.forEachIndexed { index, input ->
-                when(input) {
-                    "OnlinePlayer" -> {
-                        if(event.args.size <= index) {
-                            event.sendYMLEmbed("failMessage", {
-                                val form = setCommandPlaceholders(it, main.defaultConfig.getString("PREFIX"), event.commandName, "Custom command", "")
-                                    .replace("{message}", "No ${index + 1}. parameter provided\nUsage: ${event.prefix}${event.commandName} ${inputs.joinToString(" ")}")
-
-                                if(event.member == null)
-                                    setDiscordPlaceholders(event.author, form)
-                                else
-                                    setDiscordPlaceholders(event.member!!, form)
-                            }).queue()
-                            return
-                        }
-
-                        player = server.getPlayer(event.args[index])
-
-                        if(player == null) {
-                            event.sendYMLEmbed("failMessage", {
-                                val form = setCommandPlaceholders(it, main.defaultConfig.getString("PREFIX"), event.commandName, "Custom command", "")
-                                    .replace("{message}", "Player not found!\nUsage: ${event.prefix}${event.commandName} ${inputs.joinToString(" ")}")
-
-                                if(event.member == null)
-                                    setDiscordPlaceholders(event.author, form)
-                                else
-                                    setDiscordPlaceholders(event.member!!, form)
-                            }).queue()
-                            return
-                        }
-                    }
-                }
-            }
-        }
-
-        val sdf = SimpleDateFormat("dd.MM.yyyy")
-
-        if(player != null) {
-            content?.replace("{username}", player!!.name)?.replace("{joinDate}", sdf.format(Date(player!!.firstPlayed)))
-                ?.replace("{PlayerStatus}", "Online")?.replace("{playerStatus}", "online")
-        }
-
-
-        if(content == null) {
-
-            event.sendYMLEmbed("$path.embed", {
-                var form = setCommandPlaceholders(it, event.prefix, event.commandName, inputs?.joinToString(" ") ?: "", "")
-
-                if(player == null)
-                    form = setDiscordPlaceholders(event.member!!, form)
-                else
-                    form = setPlaceholdersForDiscordMessage(event.member!!, player!!, form)
-
-                form
-                    .replace("{messageContent}", event.message!!.content)
-                    .replace("{messageContentWithoutCommand}", event.message!!.content.substring(event.prefix.length+event.commandName.length+1))
-
-                if(player != null) {
-                    form
-                        .replace("{username}", player!!.name)
-                        .replace("{joinDate}", sdf.format(Date(player!!.firstPlayed)))
-                        .replace("{PlayerStatus}", "Online")
-                        .replace("{playerStatus}", "online")
-                } else form
-            }).queue()
-        } else event.sendMessage(content).queue()
-
     }
 }

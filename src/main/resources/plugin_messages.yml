@@ -29,3 +29,6 @@ helpCommand:
 
 # Message error in console if the console can't run the command
 noConsole: "This command can't be run in the console!"
+
+# Message if linking is disabled
+linkingDisabled: "Linking has been disabled through this plugin."

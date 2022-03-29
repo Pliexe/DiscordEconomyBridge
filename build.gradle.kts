@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.pliexe.discordeconomybridge"
-version = "3.3"
+version = "3.4"
 
 repositories {
     mavenCentral()
@@ -28,6 +28,7 @@ dependencies {
     compileOnly("org.spigotmc:spigot:1.8-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.1")
 //    compileOnly("com.discordsrv:discordsrv:1.24.0")
+
 
     compileOnly(fileTree("libs"))
 

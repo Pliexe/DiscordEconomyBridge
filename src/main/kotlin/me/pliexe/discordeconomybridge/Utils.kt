@@ -12,6 +12,10 @@ fun getMultilineableString(config: FileConfiguration,path: String): String? {
     } else return null
 }
 
+fun formatMoney(amount: Number, main: DiscordEconomyBridge, formatter: DecimalFormat = DecimalFormat("#,###.##")): String {
+    return formatMoney(amount, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter)
+}
+
 fun formatMoney(amount: Number, currency: String, leftSide: Boolean, formatter: DecimalFormat): String {
     if(leftSide)
         return currency + formatter.format(amount)

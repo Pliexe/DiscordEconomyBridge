@@ -1,11 +1,13 @@
 package me.pliexe.discordeconomybridge.discord
 
+import de.leonhard.storage.Config
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.entities.Emoji
 import net.dv8tion.jda.api.entities.Member
+import net.dv8tion.jda.api.entities.Role
 import net.dv8tion.jda.api.entities.User
 import net.dv8tion.jda.api.events.interaction.GenericComponentInteractionCreateEvent
 import net.dv8tion.jda.api.events.message.MessageDeleteEvent
@@ -14,6 +16,7 @@ import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
 import net.dv8tion.jda.api.interactions.InteractionHook
 import net.dv8tion.jda.api.interactions.commands.OptionType
 import net.dv8tion.jda.api.interactions.commands.build.CommandData
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
 import net.dv8tion.jda.api.requests.restaction.MessageAction
 import net.dv8tion.jda.api.requests.restaction.WebhookMessageUpdateAction
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyAction
@@ -22,6 +25,8 @@ import org.bukkit.OfflinePlayer
 import org.bukkit.Server
 import org.bukkit.configuration.file.FileConfiguration
 import java.awt.Color
+import java.sql.Time
+import java.time.OffsetDateTime
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.concurrent.schedule
@@ -32,6 +37,10 @@ class DiscordUser(
 ) {
     constructor(user: User): this(user, null)
     constructor(user: github.scarsz.discordsrv.dependencies.jda.api.entities.User): this(null, user)
+
+    override fun toString(): String {
+        return "${name}#${discriminator}"
+    }
 
     val id: String
         get() = userNative?.id ?: userSRV!!.id
@@ -46,8 +55,17 @@ class DiscordUser(
         get() = if(userNative == null) userSRV!!.avatarUrl ?: userSRV.defaultAvatarUrl
         else userNative.avatarUrl ?: userNative.defaultAvatarUrl
 
+    val asMention: String
+        get() = userNative?.asMention ?: userSRV!!.asMention
+
+    val isBot: Boolean
+        get() = userNative?.isBot ?: userSRV!!.isBot
+
     val asTag: String
         get() = userNative?.asTag ?: userSRV!!.asTag
+
+    val timeCreated: OffsetDateTime
+        get() = userNative?.timeCreated ?: userSRV!!.timeCreated
 }
 
 class DiscordMember(
@@ -56,6 +74,15 @@ class DiscordMember(
 ) {
     constructor(member: Member): this(member, null)
     constructor(member: github.scarsz.discordsrv.dependencies.jda.api.entities.Member): this(null, member)
+
+    val roleIDs: List<String>
+        get() = memberNative?.roles?.map { it.id } ?: memberSRV!!.roles.map { it.id }
+
+    val timeJoined: OffsetDateTime
+        get() = memberNative?.timeJoined ?: memberSRV!!.timeJoined
+
+    val roles: List<DiscordRole>
+        get() = memberNative?.roles?.map { DiscordRole(it) } ?: memberSRV!!.roles.map { DiscordRole(it) }
 
     val id: String
         get() = memberNative?.id ?: memberSRV!!.id
@@ -66,8 +93,15 @@ class DiscordMember(
     val user: DiscordUser
         get() = if(memberNative == null) DiscordUser(memberSRV!!.user) else DiscordUser(memberNative.user)
 
+    val asMention: String
+        get() = memberNative?.asMention ?: memberSRV!!.asMention
+
     val isOwner: Boolean
         get() = memberNative?.isOwner ?: memberSRV!!.isOwner
+
+    override fun toString(): String {
+        return "${user.name}#${user.discriminator}"
+    }
 
     fun isAdministrator(): Boolean {
         return memberNative?.hasPermission(Permission.ADMINISTRATOR)
@@ -78,6 +112,38 @@ class DiscordMember(
         return memberNative?.roles?.contains(roleID) ?: memberSRV!!.roles.contains(roleID)
     }
 }
+
+class DiscordRole(
+    val roleNative: Role?,
+    val roleSRV: github.scarsz.discordsrv.dependencies.jda.api.entities.Role?
+) {
+    constructor(role: Role) : this(role, null)
+    constructor(role: github.scarsz.discordsrv.dependencies.jda.api.entities.Role) : this(null, role)
+
+    val id: String
+        get() = roleNative?.id ?: roleSRV!!.id
+
+    val name: String
+        get() = roleNative?.name ?: roleSRV!!.name
+
+    val color: Color?
+        get() = roleNative?.color ?: roleSRV!!.color
+
+    val isManaged: Boolean
+        get() = roleNative?.isManaged ?: roleSRV!!.isManaged
+
+    val isHoisted: Boolean
+        get() = roleNative?.isHoisted ?: roleSRV!!.isHoisted
+
+    val isMentionable: Boolean
+        get() = roleNative?.isMentionable ?: roleSRV!!.isMentionable
+
+    val isEveryone: Boolean
+        get() = roleNative?.let { it.id == it.guild.id } ?: (roleSRV!!.id == roleSRV.guild.id)
+
+}
+
+
 
 class EditOriginalMessageAction(
     val type: Type,
@@ -698,13 +764,48 @@ class DiscordEmbed(
     }
 
     val isEmpty: Boolean
-        get() = nativeBuilder?.isEmpty ?: SRVBuilder!!.isEmpty
+        get() = nativeBuilder?.isEmpty ?: SRVBuilder?.isEmpty ?: true
 }
 
 open class OptionBase (
     val description: String,
     val type: OptionType,
     )
+class OptionSubCommand(
+    description: String,
+    val subCommands: kotlin.collections.HashMap<String, OptionData>
+) : OptionBase(description, OptionType.SUB_COMMAND) {
+
+    fun addOption(name: String, data: OptionData): OptionSubCommand {
+        subCommands[name] = data
+        return this
+    }
+
+    fun addOption(name: String, description: String, type: OptionType, required: Boolean): OptionSubCommand {
+        subCommands[name] = OptionData(description, type, required)
+        return this
+    }
+
+    fun toNative(name: String): SubcommandData {
+        val native = net.dv8tion.jda.api.interactions.commands.build.SubcommandData(name, description)
+
+        subCommands.forEach { (key, value) ->
+            native.addOptions(value.toNative(key))
+        }
+
+        return native
+    }
+
+    fun toSRV(name: String): github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.build.SubcommandData {
+        val native = github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.build.SubcommandData(name, description)
+
+        subCommands.forEach { (key, value) ->
+            native.addOptions(value.toSRV(key))
+        }
+
+        return native
+    }
+}
 
 class OptionData(
     description: String,
@@ -769,7 +870,7 @@ class CommandOptions() {
             {
                 OptionType.STRING, OptionType.INTEGER -> {
                     cmdData.addOption(value.type, key, value.description, (value as OptionData).isRequired)
-                    }
+                }
             }
         }
 
@@ -809,6 +910,16 @@ class CommandOptions() {
         options[name] = OptionData(description, type, required)
         return this
     }
+
+    fun addOption(name: String, data: OptionData): CommandOptions {
+        options[name] = data
+        return this
+    }
+
+    fun addOptions(name: String, data: OptionSubCommand): CommandOptions {
+        options[name] = data
+        return this
+    }
 }
 
 class ComponentInteractionEvent(
@@ -840,7 +951,7 @@ class ComponentInteractionEvent(
 
     fun reply(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
         if(embed.isEmpty)
-            reply(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+            return reply(embed.content ?: "Missing embed values and content in discord_messages.yml!")
 
         return if(eventNative == null)
             MessageAction(eventSRV!!.replyEmbeds(embed.getSRV().build()).setContent(embed.content), main)
@@ -855,7 +966,7 @@ class ComponentInteractionEvent(
 
     fun replyEphemeral(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
         if(embed.isEmpty)
-            reply(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+            return reply(embed.content ?: "Missing embed values and content in discord_messages.yml!")
 
         return if(eventNative == null)
             MessageAction(eventSRV!!.replyEmbeds(embed.getSRV().build()).setContent(embed.content).setEphemeral(true), main)
@@ -870,7 +981,7 @@ class ComponentInteractionEvent(
 
     fun editMessage(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
         if(embed.isEmpty)
-            editMessage(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+            return editMessage(embed.content ?: "Missing embed values and content in discord_messages.yml!")
 
         return if(eventNative == null)
             MessageAction(eventSRV!!.editMessageEmbeds(embed.getSRV().build()).setContent(embed.content), main)
@@ -884,7 +995,7 @@ class ComponentInteractionEvent(
     }
 
     fun getYMLEmbed(path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
-        return me.pliexe.discordeconomybridge.discord.getYMLEmbed(main, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
+        return me.pliexe.discordeconomybridge.discord.getYMLEmbed(main.discordMessagesConfig, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
     }
 }
 
@@ -904,6 +1015,91 @@ class CommandEventData (
     private val slashCommandEventNative: net.dv8tion.jda.api.events.interaction.SlashCommandEvent?,
     private val slashCommandEventSRV: SlashCommandEvent?
         ) {
+
+//    fun getUserByUsername(username: String): DiscordUser? {
+//        return when(type) {
+//            Type.GuildMessageNative -> guildEventNative!!.jda.getUsersByName(username, false).firstOrNull()?.let { DiscordUser(it) }
+//            Type.MessageNative -> globalEventNative!!.jda.getUsersByName(username, false).firstOrNull()?.let { DiscordUser(it) }
+//            Type.SlashCommandNative -> slashCommandEventNative!!.jda.getUsersByName(username, false).firstOrNull()?.let { DiscordUser(it) }
+//            Type.GuildMessageSRV -> guildEventSRV!!.jda.getUsersByName(username, false).firstOrNull()?.let { DiscordUser(it) }
+//            Type.MessageSRV -> globalEventSRV!!.jda.getUsersByName(username, false).firstOrNull()?.let { DiscordUser(it) }
+//            Type.SlashCommandSRV -> slashCommandEventSRV!!.jda.getUsersByName(username, false).firstOrNull()?.let { DiscordUser(it) }
+//        }
+//    }
+
+    fun getUserById(userId: String): DiscordUser? {
+        return when(type) {
+            Type.GuildMessageNative -> guildEventNative!!.jda.getUserById(userId)?.let { DiscordUser(it) }
+            Type.MessageNative -> globalEventNative!!.jda.getUserById(userId)?.let { DiscordUser(it) }
+            Type.SlashCommandNative -> slashCommandEventNative!!.jda.getUserById(userId)?.let { DiscordUser(it) }
+            Type.GuildMessageSRV -> guildEventSRV!!.jda.getUserById(userId)?.let { DiscordUser(it) }
+            Type.MessageSRV -> globalEventSRV!!.jda.getUserById(userId)?.let { DiscordUser(it) }
+            Type.SlashCommandSRV -> slashCommandEventSRV!!.jda.getUserById(userId)?.let { DiscordUser(it) }
+        }
+    }
+
+    fun getUserByTag(tag: String): DiscordUser? {
+        return when(type) {
+            Type.GuildMessageNative -> guildEventNative!!.jda.getUserByTag(tag)?.let { DiscordUser(it) }
+            Type.MessageNative -> globalEventNative!!.jda.getUserByTag(tag)?.let { DiscordUser(it) }
+            Type.SlashCommandNative -> slashCommandEventNative!!.jda.getUserByTag(tag)?.let { DiscordUser(it) }
+            Type.GuildMessageSRV -> guildEventSRV!!.jda.getUserByTag(tag)?.let { DiscordUser(it) }
+            Type.MessageSRV -> globalEventSRV!!.jda.getUserByTag(tag)?.let { DiscordUser(it) }
+            Type.SlashCommandSRV -> slashCommandEventSRV!!.jda.getUserByTag(tag)?.let { DiscordUser(it) }
+        }
+    }
+
+    fun getMemberById(userId: String): DiscordMember? {
+        return when(type) {
+            Type.GuildMessageNative -> guildEventNative!!.guild.getMemberById(userId)?.let { DiscordMember(it) }
+            Type.MessageNative -> globalEventNative!!.guild.getMemberById(userId)?.let { DiscordMember(it) }
+            Type.SlashCommandNative -> slashCommandEventNative!!.guild?.getMemberById(userId)?.let { DiscordMember(it) }
+            Type.GuildMessageSRV -> guildEventSRV!!.guild.getMemberById(userId)?.let { DiscordMember(it) }
+            Type.MessageSRV -> globalEventSRV!!.guild.getMemberById(userId)?.let { DiscordMember(it) }
+            Type.SlashCommandSRV -> slashCommandEventSRV!!.guild?.getMemberById(userId)?.let { DiscordMember(it) }
+        }
+    }
+
+    fun getMemberByTag(tag: String): DiscordMember? {
+        return when(type) {
+            Type.GuildMessageNative -> guildEventNative!!.guild.getMemberByTag(tag)?.let { DiscordMember(it) }
+            Type.MessageNative -> globalEventNative!!.guild.getMemberByTag(tag)?.let { DiscordMember(it) }
+            Type.SlashCommandNative -> slashCommandEventNative!!.guild?.getMemberByTag(tag)?.let { DiscordMember(it) }
+            Type.GuildMessageSRV -> guildEventSRV!!.guild.getMemberByTag(tag)?.let { DiscordMember(it) }
+            Type.MessageSRV -> globalEventSRV!!.guild.getMemberByTag(tag)?.let { DiscordMember(it) }
+            Type.SlashCommandSRV -> slashCommandEventSRV!!.guild?.getMemberByTag(tag)?.let { DiscordMember(it) }
+        }
+    }
+
+    val isIdRegex = Regex("^(((<@|<@!)[0-9]{18}>)|(^[0-9]{18}))\$")
+    val isPureIdRegex = Regex("^[0-9]{18}\$")
+    val isValidTag = Regex("[A-z]#[0-9]{4}\$")
+    val removeSyntaxFromID = Regex("(<@|<@!|>)")
+
+    fun getUserByInput(input: String): DiscordUser {
+        if(isIdRegex.matches(input))
+        {
+            val id = input.replace(removeSyntaxFromID, "")
+            return getUserById(id) ?: throw UserGetterException("User with the id $id was not found!")
+        } else if(isValidTag.matches(input)) {
+            val res = getUserByTag(input)
+            return res ?: throw UserGetterException("User with the tag $input was not found!")
+        } else throw UserGetterException("Invalid user search option. Either mention, type id or type their tag!")
+    }
+
+    fun getMemberByInput(input: String): DiscordMember {
+        if(isIdRegex.matches(input))
+        {
+            val id = input.replace(removeSyntaxFromID, "")
+            return getMemberById(id) ?: throw UserGetterException("Member with the id $id was not found!")
+        } else if(isValidTag.matches(input)) {
+            val res = getMemberByTag(input)
+            return res ?: throw UserGetterException("Member with the tag $input was not found!")
+        } else throw UserGetterException("Invalid member search option. Either mention, type id or type their tag!")
+    }
+
+    class UserGetterException(message: String) : Exception(message)
+    class MemberGetterException(message: String) : Exception(message)
 
     val member: DiscordMember?
         get() {
@@ -1122,7 +1318,7 @@ class CommandEventData (
 
     fun sendMessage(embed: DiscordEmbed): me.pliexe.discordeconomybridge.discord.MessageAction {
         if(embed.isEmpty)
-            sendMessage(embed.content ?: "Missing embed values and content in discord_messages.yml!")
+            return sendMessage(embed.content ?: "Missing embed values and content in discord_messages.yml!")
 
         return when(type) {
             Type.GuildMessageNative -> MessageAction(guildEventNative!!.channel.sendMessageEmbeds(embed.getNative().build()).content(embed.content), main)
@@ -1151,8 +1347,16 @@ class CommandEventData (
             else DiscordEmbed(null, github.scarsz.discordsrv.dependencies.jda.api.EmbedBuilder())
     }
 
+    fun getYMLEmbed(path: String, config: Config, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
+        return me.pliexe.discordeconomybridge.discord.getYMLEmbed(config, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
+    }
+
     fun getYMLEmbed(path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
-        return me.pliexe.discordeconomybridge.discord.getYMLEmbed(main, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
+        return me.pliexe.discordeconomybridge.discord.getYMLEmbed(main.discordMessagesConfig, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
+    }
+
+    fun sendYMLEmbed(path: String, config: Config, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): me.pliexe.discordeconomybridge.discord.MessageAction {
+        return sendMessage(getYMLEmbed(path, config, filter, resolveScript, ignoreDescription))
     }
 
     fun sendYMLEmbed(path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): me.pliexe.discordeconomybridge.discord.MessageAction {

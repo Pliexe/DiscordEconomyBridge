@@ -3,7 +3,7 @@ package me.pliexe.discordeconomybridge
 import org.bukkit.ChatColor
 
 fun getValue(path: String, main: DiscordEconomyBridge, default: String): String {
-    val value = main.pluginMessagesConfig!!.get(path)
+    val value = main.pluginMessagesConfig.get(path)
 
     return when (value) {
         is ArrayList<*> -> {
@@ -67,4 +67,7 @@ class PluginMessages(val main: DiscordEconomyBridge) {
 
     val linkingInProcess: String
         get() = getValue("linkingInProcess", main, "You have already started the link process! Your code was &l&9{code}&r.")
+
+    val linkingDisabled: String
+        get() = getValue("linkingDisabled", main, "Linking has been disabled through this plugin.")
 }

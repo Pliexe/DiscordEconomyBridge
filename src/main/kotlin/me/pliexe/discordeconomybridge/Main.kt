@@ -1,6 +1,7 @@
 package me.pliexe.discordeconomybridge
 
 import de.leonhard.storage.Config
+import de.leonhard.storage.Json
 import de.leonhard.storage.LightningBuilder
 import de.leonhard.storage.internal.settings.ConfigSettings
 import de.leonhard.storage.internal.settings.DataType
@@ -8,10 +9,7 @@ import de.leonhard.storage.internal.settings.ReloadSettings
 import github.scarsz.discordsrv.DiscordSRV
 import me.clip.placeholderapi.PlaceholderAPI
 import me.pliexe.discordeconomybridge.checkers.checkForUpdates
-import me.pliexe.discordeconomybridge.commands.ClearSlashCommands
-import me.pliexe.discordeconomybridge.commands.HelpCommand
-import me.pliexe.discordeconomybridge.commands.LinkCommand
-import me.pliexe.discordeconomybridge.commands.UnlinkCommand
+import me.pliexe.discordeconomybridge.commands.*
 import me.pliexe.discordeconomybridge.discord.LinkHandler
 import me.pliexe.discordeconomybridge.discord.handlers.CommandHandler
 import me.pliexe.discordeconomybridge.discord.registerClient
@@ -32,6 +30,8 @@ class DiscordEconomyBridge : JavaPlugin() {
         var placeholderApiEnabled = false
         var discordSrvEnabled = false
         lateinit var logger: Logger
+
+        lateinit var userCache: Json
     }
 
     private var jda: JDA? = null
@@ -40,10 +40,10 @@ class DiscordEconomyBridge : JavaPlugin() {
     val moderatorManager = ModeratorManager(this)
 //    val discordMessagesConfig = ConfigManager.getConfig("discord_messages.yml", this, "discord_messages.yml")
 
+    lateinit var giveawaysDb: Json
     lateinit var pluginMessagesConfig: Config
-
     lateinit var discordMessagesConfig: Config
-
+    lateinit var customCommandsConfig: Config
     lateinit var defaultConfig: Config
 
     var shutingDown = false
@@ -83,9 +83,19 @@ class DiscordEconomyBridge : JavaPlugin() {
         return econ != null
     }
 
+    private var clearCmds = false
+
+    fun getClearCmds(): Boolean { return clearCmds }
+
     override fun onEnable() {
 
+
+
         DiscordEconomyBridge.logger = this.logger
+
+        userCache = LightningBuilder
+            .fromPath("users", dataFolder.path)
+            .createJson()
 
         defaultConfig = LightningBuilder
             .fromPath("config", dataFolder.path)
@@ -111,13 +121,21 @@ class DiscordEconomyBridge : JavaPlugin() {
             .addInputStream(getResource("plugin_messages.yml"))
             .createConfig()
 
+        customCommandsConfig = LightningBuilder
+            .fromPath("custom_commands", dataFolder.path)
+//            .setReloadSettings(ReloadSettings.MANUALLY)
+            .setDataType(DataType.SORTED)
+            .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
+            .addInputStream(getResource("custom_commands.yml"))
+            .createConfig()
+
         if(defaultConfig.contains("VERSION")) {
             try {
                 val version = defaultConfig.getString("VERSION")
                 if(version == "\${version}")
                     defaultConfig.set("VERSION", description.version)
                 else if(description.version.replace(".", "").toInt() > version.replace(".", "").toInt()) {
-
+                    clearCmds = true
                     logger.info("Updating Configurations to latest version!")
 
                     val backupFileConf = File(dataFolder.path, "config.yml.old")
@@ -137,6 +155,13 @@ class DiscordEconomyBridge : JavaPlugin() {
                             pluginMessagesConfig.addDefaultsFromInputStream(getResource("plugin_messages.yml"))
                         } else {
                             logger.severe("Failed to create backup for plugin_messages.yml!")
+                        }
+
+                        val backupFileC = File(dataFolder.path, "custom_commands.yml.old")
+                        if(FileUtil.copy(customCommandsConfig.file, backupFileC)) {
+                            customCommandsConfig.addDefaultsFromInputStream(getResource("custom_commands.yml"))
+                        } else {
+                            logger.severe("Failed to create backup for custom_commands.yml!")
                         }
 
                         logger.info("Configurations updated. Old versions of them have been backed up as config_name.yml.old")
@@ -203,11 +228,14 @@ class DiscordEconomyBridge : JavaPlugin() {
             return
         }
 
-        server.pluginManager.registerEvents(Listener(this), this)
+        server.pluginManager.registerEvents(Listener(), this)
 
         if(discordSrvEnabled)
         {
             DiscordSRV.api.subscribe(discordSrvListener)
+
+            getCommand("unlinkdiscord").executor = LinkDisabledCommandResponse(this)
+            getCommand("linkdiscord").executor = LinkDisabledCommandResponse(this)
         } else {
             val token = defaultConfig.getString("TOKEN")
 
@@ -230,10 +258,10 @@ class DiscordEconomyBridge : JavaPlugin() {
 
             getCommand("unlinkdiscord").executor = UnlinkCommand(this)
             getCommand("linkdiscord").executor = LinkCommand(this)
-            getCommand("clearslashcommands").executor = ClearSlashCommands(this)
         }
 
         getCommand("discordeconomybridge").executor = HelpCommand(this)
+        getCommand("clearslashcommands").executor = ClearSlashCommands(this)
 
         checkForUpdates(description.version)
     }
