@@ -22,6 +22,9 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
         logger.info("[Bot] Loading command Aliases!")
         main.commandHandler.loadAliases()
 
+        logger.info("[Bot] Loading command cooldowns!")
+        main.commandHandler.loadCooldowns()
+
         if(main.defaultConfig.contains("slashCommandServers")) {
             try {
                 main.defaultConfig.getStringList("slashCommandServers").forEach { guildID ->
@@ -37,41 +40,57 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
     private fun registerSlashCommands(guild: Guild) {
         try {
             logger.info("Registering slash commands for the guild \"${guild.name}\" : ${guild.id}")
-            guild.retrieveCommands().queue { retrievedCommands ->
-                var updated = 0
-                val updateCommands = guild.updateCommands()
-                main.commandHandler.getCommands().forEach { (key, value) ->
-                    if(!main.getClearCmds() && !retrievedCommands.any {it.name == key}) {
-                        updateCommands.addCommands(value.getSlashCommandDataSRV())
-                        updated++
-                    }
-                }
-                logger.info("Registering command permissions")
-                if(updated > 0) updateCommands.queue { commands ->
 
-                    val modRoles = main.moderatorManager.getRoles()
+            val updateCommands = guild.updateCommands()
 
-                    if(modRoles.isNotEmpty()) {
-                        commands.forEach { command ->
-                            if(main.commandHandler.getCommand(command.name)!!.adminCommand)
-                            {
-                                command.updatePrivileges(guild, modRoles.map { CommandPrivilege.enableRole(it) }).queue()
-                            }
-                        }
-                    }
-                } else {
-                    val modRoles = main.moderatorManager.getRoles()
-
-                    if(modRoles.isNotEmpty()) {
-                        retrievedCommands.forEach { command ->
-                            if(main.commandHandler.getCommand(command.name)!!.adminCommand)
-                            {
-                                command.updatePrivileges(guild, modRoles.map { CommandPrivilege.enableRole(it) }).queue()
-                            }
-                        }
+            main.commandHandler.getCommands().forEach { (_, value) ->
+                updateCommands.addCommands(value.getSlashCommandDataSRV())
+            }
+            updateCommands.queue { commands ->
+                val modRoles = main.moderatorManager.getRoles()
+                commands.forEach { command ->
+                    if(main.commandHandler.getCommand(command.name)?.adminCommand == true) {
+                        command.updatePrivileges(guild, modRoles.map { CommandPrivilege.enableRole(it) }).queue()
                     }
                 }
             }
+
+
+//            guild.retrieveCommands().queue { retrievedCommands ->
+//                var updated = 0
+//                val updateCommands = guild.updateCommands()
+//                main.commandHandler.getCommands().forEach { (key, value) ->
+//                    if(!main.getClearCmds() && !retrievedCommands.any {it.name == key}) {
+//                        updateCommands.addCommands(value.getSlashCommandDataSRV())
+//                        updated++
+//                    }
+//                }
+//                logger.info("Registering command permissions")
+//                if(updated > 0) updateCommands.queue { commands ->
+//
+//                    val modRoles = main.moderatorManager.getRoles()
+//
+//                    if(modRoles.isNotEmpty()) {
+//                        commands.forEach { command ->
+//                            if(main.commandHandler.getCommand(command.name)!!.adminCommand)
+//                            {
+//                                command.updatePrivileges(guild, modRoles.map { CommandPrivilege.enableRole(it) }).queue()
+//                            }
+//                        }
+//                    }
+//                } else {
+//                    val modRoles = main.moderatorManager.getRoles()
+//
+//                    if(modRoles.isNotEmpty()) {
+//                        retrievedCommands.forEach { command ->
+//                            if(main.commandHandler.getCommand(command.name)!!.adminCommand)
+//                            {
+//                                command.updatePrivileges(guild, modRoles.map { CommandPrivilege.enableRole(it) }).queue()
+//                            }
+//                        }
+//                    }
+//                }
+//            }
             logger.info("Done registering slash commands for \"${guild.name}\" : ${guild.id}")
         } catch (e: ContextException){
             main.logger.severe("Did you invite your bot with applications.commands scope?")

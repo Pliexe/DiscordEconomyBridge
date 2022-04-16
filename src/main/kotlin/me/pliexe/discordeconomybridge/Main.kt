@@ -40,7 +40,7 @@ class DiscordEconomyBridge : JavaPlugin() {
     val moderatorManager = ModeratorManager(this)
 //    val discordMessagesConfig = ConfigManager.getConfig("discord_messages.yml", this, "discord_messages.yml")
 
-    lateinit var giveawaysDb: Json
+//    lateinit var giveawaysDb: Json
     lateinit var pluginMessagesConfig: Config
     lateinit var discordMessagesConfig: Config
     lateinit var customCommandsConfig: Config
@@ -83,13 +83,7 @@ class DiscordEconomyBridge : JavaPlugin() {
         return econ != null
     }
 
-    private var clearCmds = false
-
-    fun getClearCmds(): Boolean { return clearCmds }
-
     override fun onEnable() {
-
-
 
         DiscordEconomyBridge.logger = this.logger
 
@@ -135,7 +129,6 @@ class DiscordEconomyBridge : JavaPlugin() {
                 if(version == "\${version}")
                     defaultConfig.set("VERSION", description.version)
                 else if(description.version.replace(".", "").toInt() > version.replace(".", "").toInt()) {
-                    clearCmds = true
                     logger.info("Updating Configurations to latest version!")
 
                     val backupFileConf = File(dataFolder.path, "config.yml.old")
@@ -143,26 +136,26 @@ class DiscordEconomyBridge : JavaPlugin() {
                         defaultConfig.set("VERSION", description.version)
                         defaultConfig.addDefaultsFromInputStream(getResource("config.yml"))
 
-                        val backupFileDM = File(dataFolder.path, "discord_messages.yml.old")
-                        if(FileUtil.copy(discordMessagesConfig.file, backupFileDM)) {
-                            discordMessagesConfig.addDefaultsFromInputStream(getResource("discord_messages.yml"))
-                        } else {
-                            logger.severe("Failed to create backup for discord_messages.yml! Skipping to next configuration...")
-                        }
-
-                        val backupFilePM = File(dataFolder.path, "plugin_messages.yml.old")
-                        if(FileUtil.copy(pluginMessagesConfig.file, backupFilePM)) {
-                            pluginMessagesConfig.addDefaultsFromInputStream(getResource("plugin_messages.yml"))
-                        } else {
-                            logger.severe("Failed to create backup for plugin_messages.yml!")
-                        }
-
-                        val backupFileC = File(dataFolder.path, "custom_commands.yml.old")
-                        if(FileUtil.copy(customCommandsConfig.file, backupFileC)) {
-                            customCommandsConfig.addDefaultsFromInputStream(getResource("custom_commands.yml"))
-                        } else {
-                            logger.severe("Failed to create backup for custom_commands.yml!")
-                        }
+//                        val backupFileDM = File(dataFolder.path, "discord_messages.yml.old")
+//                        if(!File("discord_messages.yml").exists() && FileUtil.copy(discordMessagesConfig.file, backupFileDM)) {
+//                            discordMessagesConfig.addDefaultsFromInputStream(getResource("discord_messages.yml"))
+//                        } else {
+//                            logger.severe("Failed to create backup for discord_messages.yml! Skipping to next configuration...")
+//                        }
+//
+//                        val backupFilePM = File(dataFolder.path, "plugin_messages.yml.old")
+//                        if(!File("plugin_messages.yml").exists() && FileUtil.copy(pluginMessagesConfig.file, backupFilePM)) {
+//                            pluginMessagesConfig.addDefaultsFromInputStream(getResource("plugin_messages.yml"))
+//                        } else {
+//                            logger.severe("Failed to create backup for plugin_messages.yml!")
+//                        }
+//
+//                        val backupFileC = File(dataFolder.path, "custom_commands.yml.old")
+//                        if(!File("custom_commands.yml").exists() && FileUtil.copy(customCommandsConfig.file, backupFileC)) {
+//                            customCommandsConfig.addDefaultsFromInputStream(getResource("custom_commands.yml"))
+//                        } else {
+//                            logger.severe("Failed to create backup for custom_commands.yml!")
+//                        }
 
                         logger.info("Configurations updated. Old versions of them have been backed up as config_name.yml.old")
                     } else {

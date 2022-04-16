@@ -1430,18 +1430,17 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
         }?: event.member!!
 
         val playerPlaceholder: UniversalPlayer? = main.customCommandsConfig.getString("commands.$name.enablePlaceholdersFor")?.let { value ->
-            main.logger.warning("GOT TO END: ${values[value]} | ${value}")
             values[value]?.let { if(it is UniversalPlayer) it else null }
         }
-
-        main.logger.warning("GOT TO END: $playerPlaceholder")
 
         event.sendYMLEmbed("commands.$name.message", main.customCommandsConfig, { str ->
             val str1 = setCommandPlaceholders(resolveStringWithValues(str, values, doFormat, formatter, main), event.prefix, event.commandName, description, usage)
 
             if(playerPlaceholder != null)
                 setPlaceholdersForDiscordMessage(memberPlaceholder, playerPlaceholder, str1)
-            else setDiscordPlaceholders(memberPlaceholder, str1);
+            else setDiscordPlaceholders(memberPlaceholder, str1)
         }).queue()
+
+        main.commandHandler.commandComplete(this)
     }
 }

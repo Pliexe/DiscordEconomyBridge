@@ -84,6 +84,8 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
         if(!text.isNullOrEmpty()) embed.setDescription(text.joinToString("\n"))
 
         event.sendMessage(embed).queue()
+
+        main.commandHandler.commandComplete(this)
     }
 }
 

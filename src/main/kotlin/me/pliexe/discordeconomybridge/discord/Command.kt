@@ -25,7 +25,6 @@ import org.bukkit.OfflinePlayer
 import org.bukkit.Server
 import org.bukkit.configuration.file.FileConfiguration
 import java.awt.Color
-import java.sql.Time
 import java.time.OffsetDateTime
 import java.util.*
 import kotlin.collections.HashMap
@@ -995,7 +994,7 @@ class ComponentInteractionEvent(
     }
 
     fun getYMLEmbed(path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
-        return me.pliexe.discordeconomybridge.discord.getYMLEmbed(main.discordMessagesConfig, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
+        return getYMLEmbed(main.discordMessagesConfig, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
     }
 }
 
@@ -1348,11 +1347,11 @@ class CommandEventData (
     }
 
     fun getYMLEmbed(path: String, config: Config, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
-        return me.pliexe.discordeconomybridge.discord.getYMLEmbed(config, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
+        return getYMLEmbed(config, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
     }
 
     fun getYMLEmbed(path: String, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): DiscordEmbed {
-        return me.pliexe.discordeconomybridge.discord.getYMLEmbed(main.discordMessagesConfig, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
+        return getYMLEmbed(main.discordMessagesConfig, main.logger, CreateEmbed(), path, filter, resolveScript, ignoreDescription)
     }
 
     fun sendYMLEmbed(path: String, config: Config, filter: ((text: String) -> String), resolveScript: ((command: String) -> Boolean)? = null, ignoreDescription: Boolean = false): me.pliexe.discordeconomybridge.discord.MessageAction {
@@ -1373,6 +1372,8 @@ abstract class Command(protected val main: DiscordEconomyBridge) {
     abstract val usage: String
     abstract val description: String
 
+    var cooldown: Long? = null
+
 //    abstract val guildOnly: Boolean
 
     abstract fun run(event: CommandEventData)
@@ -1382,6 +1383,15 @@ abstract class Command(protected val main: DiscordEconomyBridge) {
     open val adminCommand = false
 
     open val isGame = false
+
+    fun loadCooldown() {
+        try {
+            cooldown = main.defaultConfig.getLong("cooldowns.${name}").let { if(it == 0L) null else it * 1000L }
+            if(cooldown != null) main.logger.info("Loaded cooldown for ${name}")
+        } catch (e: Exception) {
+            main.logger.warning("Failed to load cooldown for command ${name.toLowerCase()}! Invalid configuration")
+        }
+    }
 
     fun getSlashCommandDataNative(): CommandData {
         return getCommandOptions().toNative(name, description)

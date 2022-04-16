@@ -99,6 +99,8 @@ class Blackjack(main: DiscordEconomyBridge) : Command(main) {
             if(main.shutingDown) return
             if(won)
                 main.getEconomy().depositPlayer(player, bet * 2)
+
+            main.commandHandler.commandComplete(this)
             event.removeBets()
             event.resetCooldowns()
         }

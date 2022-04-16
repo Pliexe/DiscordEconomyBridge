@@ -104,6 +104,8 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
         }
 
         fun decline(bevent: ComponentInteractionEvent? = null, msg: Message? = null) {
+            main.commandHandler.removeCooldown(this)
+
             val embed = event.getYMLEmbed("coinflipCommandDeclineEmbed", {
                 val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)
                 setPlaceholdersForDiscordMessage(event.member!!, wagerPlayer, form)
@@ -117,6 +119,8 @@ class Coinflip(main: DiscordEconomyBridge) : Command(main) {
                 msg!!.editMessage(embed).queue()
             else bevent.editMessage(embed).removeActinRows().queue()
         }
+
+        main.commandHandler.commandComplete(this)
 
         event.sendYMLEmbed("coinflipCommandConfirmEmbed", {
             val form = setCommandPlaceholders(it, event.prefix, event.commandName, description, usage)

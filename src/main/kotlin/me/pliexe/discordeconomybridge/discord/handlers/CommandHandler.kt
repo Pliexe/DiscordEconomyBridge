@@ -17,6 +17,8 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
     private val config = main.config
     private val server = main.server
 
+    private val cooldownManager = CooldownManager()
+
     private val disabledCommands = if(config.isList("disabledCommands")) config.getStringList("disabledCommands") else null
     private val commandAliases = HashMap<String, String>()
 
@@ -64,7 +66,14 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
     private fun loadCommand(command: Command)
     {
+        if((disabledCommands != null) && disabledCommands.contains(command.name)) return
         commands[command.name] = command
+    }
+
+    fun loadCooldowns() {
+        commands.forEach { (_, command) ->
+            command.loadCooldown()
+        }
     }
 
     fun loadCommands()
@@ -82,6 +91,8 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         main.customCommandsConfig.get("commands").also {
             if(isConfigSection(it)) {
                 main.customCommandsConfig.singleLayerKeySet("commands").forEach { name ->
+
+                    if((disabledCommands != null) && disabledCommands.contains(name)) return@forEach
 
                     val inputSec = main.customCommandsConfig.getSection("commands.$name.inputs")
 
@@ -130,30 +141,58 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             }
     }
 
+    fun commandComplete(cmd: Command) {
+        if (cmd.cooldown != null) {
+            cooldownManager.Add(cmd.name, cmd.cooldown!!)
+        }
+    }
+
+    fun commandFail(cmd: Command) {
+        removeCooldown(cmd)
+    }
+
+    fun removeCooldown(cmd: Command) {
+        if (cmd.cooldown != null) {
+            cooldownManager.Remove(cmd.name)
+        }
+    }
+
+
     private fun runCommand(event: CommandEventData, cmd: Command) {
+        if(cmd.cooldown != null && !main.moderatorManager.isModerator(event.member!!))
+//        if(cmd.cooldown != null)
+        {
+            if(cooldownManager.isOnCooldown(cmd.name))
+                return event.sendMessage("Command is on cool-down! Try again in ${cooldownManager.getCooldown(cmd.name)}!").queue()
+        }
+
         if(cmd.isGame && playingGame.contains(event.author.id))
             return cmd.fail(event, "You are already playing an game!")
 
         if(cmd.adminCommand && !main.moderatorManager.isModerator(event.member!!))
             return cmd.noPermission(event)
 
-        try {
-            cmd.run(event)
-        } catch (e: Exception) {
-            if(cmd.isGame && playingGame.contains(event.author.id))
-                event.resetCooldowns()
+        Thread {
+            try {
+                cmd.run(event)
+            } catch (e: Exception) {
+                if (cmd.isGame && playingGame.contains(event.author.id))
+                    event.resetCooldowns()
 
-            if(cmd.isGame)
-                event.restoreBets()
+                if (cmd.isGame)
+                    event.restoreBets()
 
-            e.printStackTrace()
-            event.sendYMLEmbed("errorMessage", {
-                setDiscordPlaceholders(
-                    event.member!!,
-                    setCommandPlaceholders(it, event.prefix, event.commandName, cmd.description, cmd.usage)
-                )
-            }).queue()
-        }
+                commandFail(cmd)
+
+                e.printStackTrace()
+                event.sendYMLEmbed("errorMessage", {
+                    setDiscordPlaceholders(
+                        event.member!!,
+                        setCommandPlaceholders(it, event.prefix, event.commandName, cmd.description, cmd.usage)
+                    )
+                }).queue()
+            }
+        }.start()
     }
 
     fun runCommand(event: GuildMessageReceivedEvent)
@@ -164,9 +203,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
         val rawArgs = event.message.contentRaw.split(" +".toRegex())
         val command = rawArgs[0].substring(prefix.length).toLowerCase()
-
-        if(disabledCommands != null)
-            if(disabledCommands.contains(command)) return
 
         val args = rawArgs.subList(1, rawArgs.size)
 
@@ -179,7 +215,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             cmd = commands[alias]
             if(cmd == null) return
         }
-
 
         val eventData = CommandEventData(
             main,
@@ -200,9 +235,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
         val rawArgs = event.message.contentRaw.split(" +".toRegex())
         val command = rawArgs[0].substring(prefix.length).toLowerCase()
-
-        if(disabledCommands != null)
-            if(disabledCommands.contains(command)) return
 
         val args = rawArgs.subList(1, rawArgs.size)
 
@@ -229,9 +261,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
     fun runCommand(event: SlashCommandEvent)
     {
-        if(disabledCommands != null)
-            if(disabledCommands.contains(event.name)) return
-
         val cmd = commands[event.name] ?: return
 
         val eventData = CommandEventData(
@@ -246,9 +275,6 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
     fun runCommand(event: net.dv8tion.jda.api.events.interaction.SlashCommandEvent)
     {
-        if(disabledCommands != null)
-            if(disabledCommands.contains(event.name)) return
-
         val cmd = commands[event.name] ?: return
 
         val eventData = CommandEventData(

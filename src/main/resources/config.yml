@@ -60,6 +60,9 @@ noDiscordSRVwarn: false
 maxBet: 100000000000000000
 minBet: 50
 
+### Commands customization ###
+# Command customization has been moved to discord_messages.yml
+
 # Timeout in seconds. The amount of time a command will wait for user input
 commandTimeout: 150
 # Timeout in seconds. The amount of time a command will wait for user input inside a game
@@ -83,59 +86,13 @@ aliases:
   rockpaperscissors:
     - rps
 
+# Cooldown settings
+cooldowns:
+  blackjack: 300
+  coinflip: 300
+  rockpaperscissors: 300
+
 # Disabled commands
+
 #disabledCommands:
 #  - help
-
-
-### Commands customization ###
-# Command customization has been moved to discord_messages.yml
-
-# +-----------------+ #
-### Custom commands ###
-# +-----------------+ #
-
-# +------------------------+ #
-### Available placeholders ###
-###
-### {messageContent} - The whole message's content
-### {messageContentWithoutCommand} - The message's content without the command part
-### {username} - Player's username
-### {PlayerStatus} - Tell if the player is online. Example: Player is Online
-### {playerStatus} - Tell if the player is online. Example: Player is online
-### {joinDate} - Player's join date
-###
-###                        ###
-# +------------------------+ #
-
-customCommands:
-#  say:
-#    content: "{messageContentWithoutCommand}"
-  info:
-    inputs:
-      - "OnlinePlayer"
-    aliases:
-      - user
-    embed:
-      color: 0x3242a8
-#      author:
-#        name: "John"
-#        icon_url: "https://yes"
-#        url: "https://visitme:
-#      image: "https://yes"
-#      thumnail: "https://yes"
-#      icon_url: "https://yes"
-#      title: "Title of this embed"
-#      footer:
-#        text: "A footer example"
-#        icon_url: "any icon url can be placed here"
-      fields:
-        "Username":
-          text: "{username}"
-          inline: true
-        "Status":
-          text: "{PlayerStatus}"
-          inline: true
-        "Join date":
-          text: "{joinDate}"
-          inline: true

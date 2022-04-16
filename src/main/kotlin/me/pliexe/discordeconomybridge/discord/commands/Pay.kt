@@ -77,5 +77,7 @@ class Pay(main: DiscordEconomyBridge): Command(main) {
             setPlaceholdersForDiscordMessage(event.member!!, reciever, UniversalPlayer(senderPlayer), UniversalPlayer(recieverPlayer), form)
                 .replace("{amount}", formatMoney(amount, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
         }).queue()
+
+        main.commandHandler.commandComplete(this)
     }
 }

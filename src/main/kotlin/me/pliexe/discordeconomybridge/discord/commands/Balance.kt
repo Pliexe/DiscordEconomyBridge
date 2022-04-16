@@ -61,13 +61,13 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
                         return
                     } else UniversalPlayer.getByUUID(uuid)
                 } else {
+
                     UniversalPlayer.getByString(event.args[0]) ?: run {
                         return fail(event, "Player not found!")
                     }
                 }
             }
         }
-
         val formatter = DecimalFormat("#,###.##")
 
         event.sendYMLEmbed("balanceCommandEmbed", {
@@ -82,6 +82,6 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
             if(it == "ifOnline") player.isOnline else false
         }).queue()
 
-        return
+        main.commandHandler.commandComplete(this)
     }
 }
