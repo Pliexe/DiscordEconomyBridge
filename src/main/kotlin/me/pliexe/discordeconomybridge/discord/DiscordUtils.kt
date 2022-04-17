@@ -361,11 +361,11 @@ fun getYMLEmbed(config: Config, logger: Logger, embed: DiscordEmbed, path: Strin
     }
 
     getString(config.get("$path.image"))?.let {
-        embed.setImage(it)
+        embed.setImage(filter(it))
     }
 
     getString(config.get("$path.thumbnail"))?.let {
-        embed.setThumbnail(it)
+        embed.setThumbnail(filter(it))
     }
 
     try {
