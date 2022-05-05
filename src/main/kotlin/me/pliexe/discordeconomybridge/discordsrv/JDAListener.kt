@@ -47,12 +47,12 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
                 updateCommands.addCommands(value.getSlashCommandDataSRV())
             }
             updateCommands.queue { commands ->
-                val modRoles = main.moderatorManager.getRoles()
-                commands.forEach { command ->
-                    if(main.commandHandler.getCommand(command.name)?.adminCommand == true) {
-                        command.updatePrivileges(guild, modRoles.map { CommandPrivilege.enableRole(it) }).queue()
-                    }
-                }
+//                val modRoles = main.moderatorManager.getRoles()
+//                commands.forEach { command ->
+//                    if(main.commandHandler.getCommand(command.name)?.adminCommand == true) {
+//                        command.updatePrivileges(guild, modRoles.map { CommandPrivilege.enableRole(it) }).queue()
+//                    }
+//                }
             }
 
 
