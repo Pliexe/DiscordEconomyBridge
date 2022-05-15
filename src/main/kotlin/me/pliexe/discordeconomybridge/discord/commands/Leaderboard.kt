@@ -85,7 +85,7 @@ class Leaderboard(main: DiscordEconomyBridge): Command(main) {
 
         event.sendMessage(embed).queue()
 
-        main.commandHandler.commandComplete(this)
+        main.commandHandler.commandComplete(this, event)
     }
 }
 

@@ -68,6 +68,6 @@ class AddMoney(main: DiscordEconomyBridge): Command(main) {
                 .replace("{amount_increase}", formatMoney(amount, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
         }).queue()
 
-        main.commandHandler.commandComplete(this)
+        main.commandHandler.commandComplete(this, event)
     }
 }

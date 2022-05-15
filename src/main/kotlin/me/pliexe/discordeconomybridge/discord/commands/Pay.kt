@@ -78,6 +78,6 @@ class Pay(main: DiscordEconomyBridge): Command(main) {
                 .replace("{amount}", formatMoney(amount, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
         }).queue()
 
-        main.commandHandler.commandComplete(this)
+        main.commandHandler.commandComplete(this, event)
     }
 }

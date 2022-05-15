@@ -1441,6 +1441,6 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
             else setDiscordPlaceholders(memberPlaceholder, str1)
         }).queue()
 
-        main.commandHandler.commandComplete(this)
+        main.commandHandler.commandComplete(this, event)
     }
 }

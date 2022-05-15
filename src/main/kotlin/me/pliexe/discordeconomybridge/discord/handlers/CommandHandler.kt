@@ -141,19 +141,19 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             }
     }
 
-    fun commandComplete(cmd: Command) {
+    fun commandComplete(cmd: Command, event: CommandEventData) {
         if (cmd.cooldown != null) {
-            cooldownManager.Add(cmd.name, cmd.cooldown!!)
+            cooldownManager.Add(cmd.name, event.user.id, cmd.cooldown!!)
         }
     }
 
-    fun commandFail(cmd: Command) {
-        removeCooldown(cmd)
+    fun commandFail(cmd: Command, event: CommandEventData) {
+        removeCooldown(cmd, event)
     }
 
-    fun removeCooldown(cmd: Command) {
+    fun removeCooldown(cmd: Command, event: CommandEventData) {
         if (cmd.cooldown != null) {
-            cooldownManager.Remove(cmd.name)
+            cooldownManager.Remove(cmd.name, event.user.id)
         }
     }
 
@@ -162,8 +162,8 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         if(cmd.cooldown != null && !main.moderatorManager.isModerator(event.member!!))
 //        if(cmd.cooldown != null)
         {
-            if(cooldownManager.isOnCooldown(cmd.name))
-                return event.sendMessage("Command is on cool-down! Try again in ${cooldownManager.getCooldown(cmd.name)}!").queue()
+            if(cooldownManager.isOnCooldown(cmd.name + event.user.id))
+                return event.sendMessage("Command is on cool-down! Try again in ${cooldownManager.getCooldown(cmd.name, event.user.id)}!").queue()
         }
 
         if(cmd.isGame && playingGame.contains(event.author.id))
@@ -182,7 +182,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
                 if (cmd.isGame)
                     event.restoreBets()
 
-                commandFail(cmd)
+                commandFail(cmd, event)
 
                 e.printStackTrace()
                 event.sendYMLEmbed("errorMessage", {

@@ -67,6 +67,6 @@ class RemoveMoney(main: DiscordEconomyBridge): Command(main) {
                 .replace("{amount_decrease}", formatMoney(amount, main.pluginConfig.currency, main.pluginConfig.currencyLeftSide, formatter))
         }).queue()
 
-        main.commandHandler.commandComplete(this)
+        main.commandHandler.commandComplete(this, event)
     }
 }

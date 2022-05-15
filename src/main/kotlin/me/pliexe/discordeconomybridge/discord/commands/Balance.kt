@@ -82,6 +82,6 @@ class Balance(main: DiscordEconomyBridge): Command(main) {
             if(it == "ifOnline") player.isOnline else false
         }).queue()
 
-        main.commandHandler.commandComplete(this)
+        main.commandHandler.commandComplete(this, event)
     }
 }

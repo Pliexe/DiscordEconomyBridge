@@ -102,7 +102,7 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
         }
 
         event.addCooldowns(event.author.id)
-        main.commandHandler.commandComplete(this)
+        main.commandHandler.commandComplete(this, event)
 
         // Rock = 0, Paper = 1, Scissors = 2
         // draw - 0
@@ -491,10 +491,10 @@ class RockPaperScissors(main: DiscordEconomyBridge): Command(main) {
                                     setPlaceholdersForDiscordMessage(event.member!!, opponent, UniversalPlayer(player), opponentPlayer!!, form)
                                 })).removeActinRows().queue()
                             }
-                            main.commandHandler.commandFail(this)
+                            main.commandHandler.commandFail(this, event)
                             event.resetCooldowns()
                         } else {
-                            main.commandHandler.commandFail(this)
+                            main.commandHandler.commandFail(this, event)
                             event.resetCooldowns()
                         }
                     }

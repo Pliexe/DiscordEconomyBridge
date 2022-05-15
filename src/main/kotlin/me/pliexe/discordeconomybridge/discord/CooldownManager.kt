@@ -13,16 +13,16 @@ class CooldownManager {
         } else false
     }
 
-    fun Add(command: String, cooldown: Long) {
-        cooldowns[command] = System.currentTimeMillis() + cooldown
+    fun Add(command: String, userId: String, cooldown: Long) {
+        cooldowns[command + userId] = System.currentTimeMillis() + cooldown
     }
 
-    fun Remove(command: String) {
-        cooldowns.remove(command)
+    fun Remove(command: String, userId: String) {
+        cooldowns.remove(command + userId)
     }
 
-    fun getCooldown(commandName: String): String {
-        val cooldown = cooldowns[commandName]!!
+    fun getCooldown(commandName: String, userId: String): String {
+        val cooldown = cooldowns[commandName + userId]!!
         val ms = cooldown - System.currentTimeMillis()
         val seconds = (ms / 1000) % 60
         val minutes = (ms / (1000 * 60)) % 60
