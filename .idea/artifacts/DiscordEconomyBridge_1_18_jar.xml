@@ -1,6 +1,6 @@
 <component name="ArtifactManager">
   <artifact type="jar" name="DiscordEconomyBridge_1.18:jar">
-    <output-path>D:/Dev Servers/Spigot 1.18.2/plugins</output-path>
+    <output-path>/stuff/Dev Servers/Spigot 1.18.2/plugins</output-path>
     <root id="archive" name="DiscordEconomyBridge.jar">
       <element id="module-output" name="DiscordEconomyBridge.main" />
       <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.10.1/2c8b5e26ba40e5f91eb37a24075a2028b402c5f9/jackson-core-2.10.1.jar" path-in-jar="/" />

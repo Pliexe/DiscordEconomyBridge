@@ -57,6 +57,8 @@ class DiscordEconomyBridge : JavaPlugin() {
     val pluginMessages = PluginMessages(this)
     val pluginConfig = pluginConfig(this)
 
+    var started = false
+
     var discordSRVActive: Boolean = false
     val botTag: String
         get() {
@@ -257,27 +259,31 @@ class DiscordEconomyBridge : JavaPlugin() {
         getCommand("clearslashcommands").executor = ClearSlashCommands(this)
 
         checkForUpdates(description.version)
+
+        started = true
     }
 
     override fun onDisable() {
-        shutingDown = false
-        logger.info("Unregistering commands!")
-        if (discordSrvEnabled)
-            DiscordSRV.api.unsubscribe(discordSrvListener)
+        if(started) {
+            shutingDown = false
+            logger.info("Unregistering commands!")
+            if (discordSrvEnabled)
+                DiscordSRV.api.unsubscribe(discordSrvListener)
 
-        commandHandler.getEvents().clear()
-        commandHandler.getMessageDeleteEvents().clear()
-        if(!discordSrvEnabled)
-            getJda()!!.shutdown()
+            commandHandler.getEvents().clear()
+            commandHandler.getMessageDeleteEvents().clear()
+            if(!discordSrvEnabled)
+                getJda()!!.shutdown()
 
-        if(commandHandler.getBets().size > 0)
-        {
-            logger.info("Restoring cancelled bets")
-            commandHandler.getBets().forEach { (key, value) ->
-                getEconomy().depositPlayer(server.getOfflinePlayer(key), value)
+            if(commandHandler.getBets().size > 0)
+            {
+                logger.info("Restoring cancelled bets")
+                commandHandler.getBets().forEach { (key, value) ->
+                    getEconomy().depositPlayer(server.getOfflinePlayer(key), value)
+                }
             }
+            logger.info("Done.")
         }
-        logger.info("Done.")
     }
 
 }
