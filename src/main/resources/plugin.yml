@@ -1,6 +1,6 @@
 main: me.pliexe.discordeconomybridge.DiscordEconomyBridge
 name: DiscordEconomyBridge
-version: 4.2
+version: 4.4
 description: A plugin for server economy bridge with discord
 load: POSTWORLD
 author: pliexe
