@@ -10,7 +10,7 @@ website: https://pliexe.github.io
 depend: [Vault]
 softdepend: [PlaceholderAPI, DiscordSRV]
 
-loadbefore: [floodgate-bukkit]
+loadbefore: [floodgate-bukkit, Vault]
 
 commands:
   linkdiscord:
