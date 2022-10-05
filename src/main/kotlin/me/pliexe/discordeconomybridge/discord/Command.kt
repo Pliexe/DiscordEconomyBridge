@@ -1070,9 +1070,9 @@ class CommandEventData (
         }
     }
 
-    val isIdRegex = Regex("^(((<@|<@!)[0-9]{18}>)|(^[0-9]{18}))\$")
-    val isPureIdRegex = Regex("^[0-9]{18}\$")
-    val isValidTag = Regex("[A-z]#[0-9]{4}\$")
+    val isIdRegex = Regex("^(((<@|<@!)\\d+>)|(^\\d+))$")
+    val isPureIdRegex = Regex("^\\d+$")
+    val isValidTag = Regex("[A-z]#\\d{4}$")
     val removeSyntaxFromID = Regex("(<@|<@!|>)")
 
     fun getUserByInput(input: String): DiscordUser {

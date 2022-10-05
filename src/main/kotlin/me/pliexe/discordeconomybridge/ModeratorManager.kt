@@ -5,6 +5,8 @@ import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.Role
 
+val roleCheck = Regex("^\\d+$")
+
 class ModeratorManager(private val main: DiscordEconomyBridge) {
     private val roles = mutableListOf<String>()
 
@@ -16,13 +18,13 @@ class ModeratorManager(private val main: DiscordEconomyBridge) {
         if(main.config.isList("discordModerators")) {
             main.config.getStringList("discordModerators").forEach {
                 if(it !is String) return
-                if(it.length == 18) {
+                if(roleCheck.matches(it)) {
                     roles.add(it)
                 }
             }
         } else if(main.config.isString("discordModerators")) {
             val role = main.config.getString("discordModerators")
-            if(role.length == 18)
+            if(roleCheck.matches(role))
                 roles.add(role)
         }
 
