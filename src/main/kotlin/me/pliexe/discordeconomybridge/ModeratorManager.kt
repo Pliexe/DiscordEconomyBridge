@@ -1,9 +1,6 @@
 package me.pliexe.discordeconomybridge
 
 import me.pliexe.discordeconomybridge.discord.DiscordMember
-import net.dv8tion.jda.api.Permission
-import net.dv8tion.jda.api.entities.Member
-import net.dv8tion.jda.api.entities.Role
 
 val roleCheck = Regex("^\\d+$")
 
@@ -13,6 +10,8 @@ class ModeratorManager(private val main: DiscordEconomyBridge) {
     fun getRoles (): MutableList<String> {
         return roles
     }
+
+    fun resetRoles() { roles.clear() }
 
     fun LoadFromConfig() {
         if(main.config.isList("discordModerators")) {

@@ -1,6 +1,6 @@
 main: me.pliexe.discordeconomybridge.DiscordEconomyBridge
 name: DiscordEconomyBridge
-version: 4.5
+version: 4.6
 description: A plugin for server economy bridge with discord
 load: POSTWORLD
 author: pliexe
@@ -61,11 +61,16 @@ permissions:
       discordeconomybridge.link: true
       discordeconomybridge.unlink: true
 
+  discordeconomybridge.reload:
+    description: Permission to reload the config
+    default: op
+
   discordeconomybridge.admin:
     description: Admin permissions
     default: op
     children:
       discordeconomybridge.clearslashcommands: true
+      discordeconomybridge.reload: true
 
   discordeconomybridge.*:
     description: Default and Admin permissions

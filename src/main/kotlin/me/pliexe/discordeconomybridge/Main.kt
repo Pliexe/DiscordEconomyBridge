@@ -255,7 +255,7 @@ class DiscordEconomyBridge : JavaPlugin() {
             getCommand("linkdiscord").executor = LinkCommand(this)
         }
 
-        getCommand("discordeconomybridge").executor = HelpCommand(this)
+        getCommand("discordeconomybridge").executor = Deb(this)
         getCommand("clearslashcommands").executor = ClearSlashCommands(this)
 
         checkForUpdates(description.version)
