@@ -27,15 +27,15 @@ dependencies {
 
     compileOnly("org.spigotmc:spigot:1.8-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.1")
-//    compileOnly("com.discordsrv:discordsrv:1.24.0")
+    compileOnly("com.discordsrv:discordsrv:1.26.0")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7")
 
-
-    compileOnly(fileTree("libs"))
+//    compileOnly(fileTree("libs"))
 
     api("ch.qos.logback:logback-classic:1.2.10")
     api("com.github.simplix-softworks:simplixstorage:3.2.4")
 
-    implementation ("com.google.code.gson:gson:2.8.9")
+    implementation ("com.google.code.gson:gson:2.10.1")
 
     implementation("net.dv8tion:JDA:4.4.0_350") {
         exclude("opus-java")
