@@ -21,13 +21,13 @@ class pluginConfig(val main: DiscordEconomyBridge) {
             }
         }
 
-    val currency: String
+    val currency: Char
         get() {
             return try {
-                main.defaultConfig.getOrDefault("Currency", "$")
+                main.defaultConfig.getOrDefault("Currency", '$')
             } catch (e: ClassCastException) {
                 DiscordEconomyBridge.logger.severe("Field \"Currency\" is of an invalid type, it must be an string (text). The plugin will continue with default value.")
-                "$"
+                '$'
             }
         }
 
