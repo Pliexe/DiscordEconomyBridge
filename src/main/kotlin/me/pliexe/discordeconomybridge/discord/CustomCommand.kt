@@ -46,12 +46,12 @@ class MinecraftPlayerArg  (
 
         when(failIf) {
             is Boolean -> if(!failIf) return logicFailRes ?: "Failed due to $failIf results in true"
-            is Int -> if(failIf.toDouble() > 0) return "Failed due to $failIf results in true"
+            is Int -> if((double)failIf > 0) return "Failed due to $failIf results in true"
             is Double -> if(failIf > 0) return "Failed due to $failIf results in true"
             is String -> {
                 when(val res = resolveValue(failIf, values)) {
                     is Boolean -> if(!res) return logicFailRes ?: "Failed due to $failIf results in true"
-                    is Int -> if(res.toDouble() > 0) return "Failed due to $failIf results in true"
+                    is Int -> if((double)res > 0) return "Failed due to $failIf results in true"
                     is Double -> if(res > 0) return "Failed due to $failIf results in true"
                     is String, null -> {
                         if((res ?: failIf) == player.name) return "${player.name}  may not interact with this command"
@@ -81,12 +81,12 @@ class DiscordUserArg  (
 
         when(failIf) {
             is Boolean -> if(!failIf) return logicFailRes ?: "Failed due to $failIf results in true"
-            is Int -> if(failIf.toDouble() > 0) return "Failed due to $failIf results in true"
+            is Int -> if((double)failIf > 0) return "Failed due to $failIf results in true"
             is Double -> if(failIf > 0) return "Failed due to $failIf results in true"
             is String -> {
                 when(val res = resolveValue(failIf, values)) {
                     is Boolean -> if(!res) return logicFailRes ?: "Failed due to $failIf results in true"
-                    is Int -> if(res.toDouble() > 0) return "Failed due to $failIf results in true"
+                    is Int -> if((double)res > 0) return "Failed due to $failIf results in true"
                     is Double -> if(res > 0) return "Failed due to $failIf results in true"
                     is String, null -> {
                         if((res ?: failIf) == userId) return "<@$userId>  may not interact with this command"
@@ -117,12 +117,12 @@ class DiscordMemberArg  (
 
         when(failIf) {
             is Boolean -> if(!failIf) return logicFailRes ?: "Failed due to $failIf results in true"
-            is Int -> if(failIf.toDouble() > 0) return "Failed due to $failIf results in true"
+            is Int -> if((double)failIf > 0) return "Failed due to $failIf results in true"
             is Double -> if(failIf > 0) return "Failed due to $failIf results in true"
             is String -> {
                 when(val res = resolveValue(failIf, values)) {
                     is Boolean -> if(!res) return logicFailRes ?: "Failed due to $failIf results in true"
-                    is Int -> if(res.toDouble() > 0) return "Failed due to $failIf results in true"
+                    is Int -> if((double)res > 0) return "Failed due to $failIf results in true"
                     is Double -> if(res > 0) return "Failed due to $failIf results in true"
                     is String, null -> {
 
@@ -159,12 +159,12 @@ class StringArg  (
 
         when(failIf) {
             is Boolean -> if(!failIf) return logicFailRes ?: "Failed due to $failIf results in true"
-            is Int -> if(failIf.toDouble() > 0) return "Failed due to $failIf results in true"
+            is Int -> if((double)failIf > 0) return "Failed due to $failIf results in true"
             is Double -> if(failIf > 0) return "Failed due to $failIf results in true"
             is String -> {
                 when(val res = resolveValue(failIf, values)) {
                     is Boolean -> if(!res) return logicFailRes ?: "Failed due to $failIf results in true"
-                    is Int -> if(res.toDouble() > 0) return "Failed due to $failIf results in true"
+                    is Int -> if((double)res > 0) return "Failed due to $failIf results in true"
                     is Double -> if(res > 0) return "Failed due to $failIf results in true"
                     null, is String -> {
                         if((res ?: failIf) == input) return "$name may not match the following text: ${(res ?: failIf)}"
@@ -196,31 +196,31 @@ class NumberArg  (
     fun Conditions(input: Double, values: HashMap<String, Any>): String? {
         when(failIf) {
             is Boolean -> if(!failIf) return logicFailRes ?: "Failed due to $failIf results in true"
-            is Int -> if(failIf.toDouble() == input) return "$name may not be equal to $failIf"
+            is Int -> if((double)failIf == input) return "$name may not be equal to $failIf"
             is Double -> if(failIf == input) return "$name may not be equal to $failIf"
             is String -> {
                 when(val res = resolveValue(failIf, values)) {
                     is Boolean -> if(!res) return logicFailRes ?: "Failed due to $failIf results in true"
-                    is Int -> if(res.toDouble() == input) return "$name may not be equal to $res"
+                    is Int -> if((double)res == input) return "$name may not be equal to $res"
                     is Double -> if(res == input) return "$name may not be equal to $res"
                 }
             }
         }
 
         if(failIfG != null)
-            if(failIfG.toDouble()> input)
+            if((double)failIfG < input)
                 return "$name may not be bigger than $failIfG"
 
         if(failIfL != null)
-            if(failIfL.toDouble() > input)
+            if((double)failIfL > input)
                 return "$name may not be lower than $failIfL"
 
         if(failIfGE != null)
-            if(failIfGE.toDouble() > input)
+            if((double)failIfGE <= input)
                 return "$name may not be bigger or equal to $failIfGE"
 
         if(failIfLE != null)
-            if(failIfLE.toDouble() > input)
+            if((double)failIfLE >= input)
                 return "$name may not be lower or equal to $failIfLE"
 
         return null
@@ -230,30 +230,30 @@ class NumberArg  (
         when(failIf) {
             is Boolean -> if(!failIf) return logicFailRes ?: "Failed due to $failIf results in true"
             is Int -> if(failIf == input) return "$name may not be equal to $failIf"
-            is Double -> if(failIf.toInt() == input) return "$name may not be equal to $failIf"
+            is Double -> if((int)failIf == input) return "$name may not be equal to $failIf"
             is String -> {
                 when(val res = resolveValue(failIf, values)) {
                     is Boolean -> if(!res) return logicFailRes ?: "Failed due to $failIf results in true"
                     is Int -> if(res == input) return "$name may not be equal to $res"
-                    is Double -> if(res.toInt() == input) return "$name may not be equal to $res"
+                    is Double -> if((int)res == input) return "$name may not be equal to $res"
                 }
             }
         }
 
         if(failIfG != null)
-            if(failIfG.toInt() > input)
+            if((int)failIfG < input)
                 return "$name may not be bigger than $failIfG"
 
         if(failIfL != null)
-            if(failIfL.toInt() > input)
+            if((int)failIfL > input)
                 return "$name may not be lower than $failIfL"
 
         if(failIfGE != null)
-            if(failIfGE.toInt() > input)
+            if((int)failIfGE <= input)
                 return "$name may not be bigger or equal to $failIfGE"
 
         if(failIfLE != null)
-            if(failIfLE.toInt() > input)
+            if((int)failIfLE >= input)
                 return "$name may not be lower or equal to $failIfLE"
 
         return null
@@ -270,7 +270,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Double)
             null -> {
                 values[it]?.also { v ->
                     if(v is Int) {
-                        if (v > cond.toInt()) return true
+                        if (v > (int)cond) return true
                     }
                     else if(v is Double) {
                         if(v > cond) return true
@@ -288,7 +288,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Double)
             null -> {
                 values[it]?.also { v ->
                     if(v is Int) {
-                        if (v < cond.toInt()) return true
+                        if (v < (int)cond) return true
                     }
                     else if(v is Double) {
                         if(v < cond) return true
@@ -306,7 +306,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Double)
             null -> {
                 values[it]?.also { v ->
                     if(v is Int) {
-                        if (v >= cond.toInt()) return true
+                        if (v >= (int)cond) return true
                     }
                     else if(v is Double) {
                         if(v >= cond) return true
@@ -324,7 +324,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Double)
             null -> {
                 values[it]?.also { v ->
                     if(v is Int) {
-                        if (v <= cond.toInt()) return true
+                        if (v <= (int)cond) return true
                     }
                     else if(v is Double) {
                         if(v <= cond) return true
@@ -342,7 +342,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Double)
             null -> {
                 values[it]?.let { v ->
                     return when (v) {
-                        is Int -> v == cond.toInt()
+                        is Int -> v == (int)cond
                         is Double -> v == cond
                         else -> false
                     }
@@ -364,7 +364,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Int): B
                         if (v > cond) return true
                     }
                     else if(v is Double) {
-                        if(v > cond.toDouble()) return true
+                        if(v > (double)cond) return true
                     }
                 }
             }
@@ -382,7 +382,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Int): B
                         if (v < cond) return true
                     }
                     else if(v is Double) {
-                        if(v < cond.toDouble()) return true
+                        if(v < (double)cond) return true
                     }
                 }
             }
@@ -400,7 +400,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Int): B
                         if (v >= cond) return true
                     }
                     else if(v is Double) {
-                        if(v >= cond.toDouble()) return true
+                        if(v >= (double)cond) return true
                     }
                 }
             }
@@ -418,7 +418,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Int): B
                         if (v <= cond) return true
                     }
                     else if(v is Double) {
-                        if(v <= cond.toDouble()) return true
+                        if(v <= (double)cond) return true
                     }
                 }
             }
@@ -434,7 +434,7 @@ fun failIf(section: FlatFileSection, values: HashMap<String, Any>, cond: Int): B
                 values[it]?.let { v ->
                     return when (v) {
                         is Int -> v == cond
-                        is Double -> v == cond.toDouble()
+                        is Double -> v == (double)cond
                         else -> false
                     }
                 }
@@ -544,7 +544,7 @@ fun resolveStringWithValues(str: String, values: HashMap<String, Any>, format: L
                         "timeCreated_time" -> value.user.timeCreated.format(DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss"))
                         "timeCreated_time_short" -> value.user.timeCreated.format(DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm"))
                         "timeCreated_date_short" -> value.user.timeCreated.format(DateTimeFormatter.ofPattern("MM/dd/yy"))
-                        else -> value.toString()
+                        else -> value.toString() 
                     }
                 }
                 is DiscordUser -> {
@@ -911,8 +911,8 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         }
                     }
                     "RandomNumber", "RandomDouble" -> {
-                        val min = section.get("min").let { if(it is String) it.toDouble() else null }
-                        val max = section.get("max").let { if(it is String) it.toDouble() else null }
+                        val min = section.get("min").let { if(it is String) (double)it else null }
+                        val max = section.get("max").let { if(it is String) (double)it else null }
 
                         if(min != null && max != null) {
                             if(actionConditionChecker(section, values)) {
@@ -925,8 +925,8 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "RandomWholeNumber", "RandomInt", "RandomInteger" -> {
-                        val min = section.get("min").let { if(it is Number) it.toInt() else null }
-                        val max = section.get("max").let { if(it is Number) it.toInt() else null }
+                        val min = section.get("min").let { if(it is Number) (int)it else null }
+                        val max = section.get("max").let { if(it is Number) (int)it else null }
 
                         if(min != null && max != null) {
                             if(actionConditionChecker(section, values)) {
@@ -1034,10 +1034,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! < num2!!
@@ -1056,10 +1056,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! > num2!!
@@ -1078,10 +1078,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! <= num2!!
@@ -1100,10 +1100,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! >= num2!!
@@ -1122,7 +1122,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     var amount: Double? = amountStr.toDoubleOrNull()
 
                                     if(amount == null)
-                                        values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
+                                        values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = (double)it }
 
                                     if(amount != null)
                                         (values[playerStr] as UniversalPlayer).depositPlayer(main, amount!!)
@@ -1141,7 +1141,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     var amount: Double? = amountStr.toDoubleOrNull()
 
                                     if(amount == null)
-                                        values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
+                                        values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = (double)it }
 
                                     if(amount != null)
                                         (values[playerStr] as UniversalPlayer).withdrawPlayer(main, amount!!)
@@ -1233,10 +1233,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! + num2!!
@@ -1244,7 +1244,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     var d = it.toDoubleOrNull()
 
                                     if(d == null)
-                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = x.toDouble() }
+                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = (double)x }
 
                                     if(d != null) values[varName] = d!!
                                 }
@@ -1262,10 +1262,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! - num2!!
@@ -1273,7 +1273,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     var d = it.toDoubleOrNull()
 
                                     if(d == null)
-                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = x.toDouble() }
+                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = (double)x }
 
                                     if(d != null) values[varName] = d!!
                                 }
@@ -1291,10 +1291,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! * num2!!
@@ -1302,7 +1302,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     var d = it.toDoubleOrNull()
 
                                     if(d == null)
-                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = x.toDouble() }
+                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = (double)x }
 
                                     if(d != null) values[varName] = d!!
                                 }
@@ -1320,10 +1320,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! / num2!!
@@ -1331,7 +1331,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     var d = it.toDoubleOrNull()
 
                                     if(d == null)
-                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = x.toDouble() }
+                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = (double)x }
 
                                     if(d != null) values[varName] = d!!
                                 }
@@ -1348,10 +1348,10 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                 var num2: Double? = num2str.toDoubleOrNull()
 
                                 if(num1 == null)
-                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = it.toDouble() }
+                                    values[num1str]?.let { if(it is Double) num1 = it else if(it is Int) num1 = (double)it }
 
                                 if(num2 == null)
-                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = it.toDouble() }
+                                    values[num2str]?.let { if(it is Double) num2 = it else if(it is Int) num2 = (double)it }
 
                                 if(num1 != null && num2 != null)
                                     values[varName] = num1!! % num2!!
@@ -1359,7 +1359,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     var d = it.toDoubleOrNull()
 
                                     if(d == null)
-                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = x.toDouble() }
+                                        values[it]?.let { x -> if(x is Double) d = x else if(x is Int) num1 = (double)x }
 
                                     if(d != null) values[varName] = d!!
                                 }
