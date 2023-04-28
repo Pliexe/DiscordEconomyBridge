@@ -20,11 +20,16 @@ class Deb(val main: DiscordEconomyBridge) : CommandExecutor {
                 sender.sendMessage("Starting reload...")
 
                 main.defaultConfig.forceReload()
+                sender.sendMessage("Reloaded Default Config!")
                 main.moderatorManager.resetRoles()
                 main.moderatorManager.LoadFromConfig()
+                sender.sendMessage("Reloaded Moderator Manager!")
                 main.pluginMessagesConfig.forceReload()
+                sender.sendMessage("Reloaded Plugin Messages Config!")
                 main.discordMessagesConfig.forceReload()
+                sender.sendMessage("Reloaded Discord Messages Config!")
                 main.customCommandsConfig.forceReload()
+                sender.sendMessage("Reloaded Custom Commands Config!")
 
                 sender.sendMessage("Done reloading!")
 
