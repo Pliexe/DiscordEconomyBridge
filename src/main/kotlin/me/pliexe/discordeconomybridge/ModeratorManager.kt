@@ -32,7 +32,9 @@ class ModeratorManager(private val main: DiscordEconomyBridge) {
 
     fun isModerator(member: DiscordMember): Boolean
     {
-        if(member.isOwner) return true
+        if (main.config.isBoolean("ignorePermissionsForOwner"))
+            if (main.config.getBoolean("ignorePermissionsForOwner"))
+                if(member.isOwner) return true
 
         if(main.config.isBoolean("ignorePermissionsForAdministrators"))
             if(main.config.getBoolean("ignorePermissionsForAdministrators"))

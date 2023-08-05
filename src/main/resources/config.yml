@@ -41,6 +41,10 @@ leaderboardSlots: 10
 
 # Ignore permission check for discord administrator permission
 ignorePermissionsForAdministrators: false
+# Ignore permission check for the owner of the discord server
+ignorePermissionsForOwner: true
+# Ignore cooldowns for moderators
+ignoreCooldownsForModerators: false
 
 # Disable viewing balance of other users in !balance command
 disableViewingOfOtherUsers: false

@@ -41,6 +41,16 @@ class pluginConfig(val main: DiscordEconomyBridge) {
             }
         }
 
+    val ignoreCooldownsForModerators: Boolean
+        get() {
+            return try {
+                main.defaultConfig.getOrDefault("ignoreCooldownsForModerators", false)
+            } catch (e: ClassCastException) {
+                DiscordEconomyBridge.logger.severe("Field \"ignoreCooldownsForModerators\" is of an invalid type, it must be an Boolean (true or false). The plugin will continue with the default value.")
+                false
+            }
+        }
+
     val commandTimeout: Long
         get() {
             return try {

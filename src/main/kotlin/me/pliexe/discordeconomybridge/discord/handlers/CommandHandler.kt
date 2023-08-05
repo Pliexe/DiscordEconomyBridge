@@ -159,7 +159,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
 
 
     private fun runCommand(event: CommandEventData, cmd: Command) {
-        if(cmd.cooldown != null && !main.moderatorManager.isModerator(event.member!!))
+        if(cmd.cooldown != null && !(main.moderatorManager.isModerator(event.member!!) && main.pluginConfig.ignoreCooldownsForModerators))
 //        if(cmd.cooldown != null)
         {
             if(cooldownManager.isOnCooldown(cmd.name + event.user.id))
@@ -169,7 +169,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         if(cmd.isGame && playingGame.contains(event.author.id))
             return cmd.fail(event, "You are already playing an game!")
 
-        if(cmd.adminCommand && !main.moderatorManager.isModerator(event.member!!))
+        if(cmd.adminCommand && !(main.moderatorManager.isModerator(event.member!!) && main.pluginConfig.ignoreCooldownsForModerators))
             return cmd.noPermission(event)
 
         Thread {
