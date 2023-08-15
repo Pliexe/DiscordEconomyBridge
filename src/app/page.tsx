@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <main>
       <div style={{ flexDirection: "column", display: "flex", height: "100vh", width: "100vw", justifyContent: "center", alignItems: "center" }}>
-        <h1 style={{ fontWeight: "bold", fontSize: "5rem" }}>Work in progress!</h1>
+        <h1 style={{ fontWeight: "bold", fontSize: "5rem" }}>Work in progress! ;)</h1>
         <button style={{ color: "white" }} onClick={(ev) =>  setClicks(clicks+1)}>Click me! {clicks}</button>
       </div>
     </main>
