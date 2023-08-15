@@ -20,10 +20,10 @@ jobs:
           node-version: '16.x'
 
       - name: Installing my packages
-        run: npm ci
+        run: yarn --frozen-lockfile
 
       - name: Build my App
-        run: npm run build && touch ./out/.nojekyll
+        run: yarn build && touch ./out/.nojekyll
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4.4.1
