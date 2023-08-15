@@ -6,7 +6,7 @@ const nextConfig = {
       loader: 'akamai',
       path: '',
     },
-    assetPrefix: '/',
+    assetPrefix: 'https://github.com/Pliexe/DiscordEconomyBridge/tree/public',
     output: "export",
   };
   
