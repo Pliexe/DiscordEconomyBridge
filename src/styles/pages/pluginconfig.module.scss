@@ -1,17 +1,17 @@
-.editConfig
-{
+.editConfig {
     color: white;
+
     .commandsList {
         display: flex;
         flex-direction: column;
-        
+
         width: 10rem;
         height: 100vh;
         left: 0;
         top: 0;
         position: absolute;
 
-        background-color: rgb(43, 42, 42);        
+        background-color: rgb(43, 42, 42);
 
         div {
             display: flex;
@@ -62,15 +62,15 @@
                 cursor: pointer;
             }
         }
-        
+
         .exportedConf {
-            
+
             position: absolute;
             top: 0;
             left: 0;
             height: 100vh;
             width: 100vw;
-            background-color: rgb(0,0,0,0.4);
+            background-color: rgb(0, 0, 0, 0.4);
             opacity: 0;
             z-index: 5;
             user-select: none;
@@ -82,14 +82,14 @@
                 opacity: 1;
                 pointer-events: all;
 
-                & > div {
+                &>div {
                     height: 80vh;
                     width: 90%;
                     max-width: 1000px;
                 }
             }
 
-            & > div {
+            &>div {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -99,8 +99,8 @@
                 height: 0;
                 overflow: hidden;
                 transition: all .5s;
-                
-                
+
+
                 .codeblock {
                     transition: all .5s;
 
@@ -112,7 +112,9 @@
 
                     user-select: all;
 
-                    code { width: 100%; }
+                    code {
+                        width: 100%;
+                    }
                 }
 
                 div {
@@ -152,15 +154,26 @@
 
         background-color: rgb(59, 58, 58);
 
+        @keyframes dash {
+            from {
+                stroke-dashoffset: 100;
+            }
+        }
+
         svg {
             user-select: none;
             // cursor: grab;
-            
+
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
             background-color: rgb(107, 101, 101);
+
+            .stroke {
+                stroke-dasharray: 10;
+                animation: dash 5s linear infinite;
+            }
 
             rect {
                 fill: rgb(59, 58, 58);
@@ -233,7 +246,7 @@
             overflow-y: hidden;
 
             transition: max-height .5s;
-            
+
             h1 {
                 font-weight: bold;
                 cursor: pointer;
@@ -244,7 +257,7 @@
                 max-height: 1500px;
                 overflow-y: hidden;
             }
-    
+
             button {
                 width: 100%;
                 background-color: rgb(58, 58, 58);

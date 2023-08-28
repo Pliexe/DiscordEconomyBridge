@@ -506,6 +506,9 @@ export default function EditConfig() {
                                                     fill="transparent"
                                                     // Add background shadow to the line if the source node is selected
                                                     filter={selectedNode?.id === sourceNode.id && selectedNodeEdge === connection.source.output ? "drop-shadow(0 0 0.25rem rgba(0,0,0, 255))" : ""}
+
+                                                    className={getEdgeInputType(targetNode.type, connection.target.input) === "flow" ? Style.stroke : ""}
+                                                    
                                                 />
 
 
