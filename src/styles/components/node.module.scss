@@ -1,0 +1,7 @@
+.node {
+    filter: drop-shadow(0 0 0.75rem rgba(0, 0, 0, 0.5));
+
+    &.highlight {
+        filter: drop-shadow(0 0 0.75rem rgba(255, 255, 255, 0.5));
+    }
+}

@@ -6,8 +6,8 @@ const nextConfig = {
       loader: 'akamai',
       path: '',
     },
-    assetPrefix: '/DiscordEconomyBridge/',
-    basePath: '/DiscordEconomyBridge',
+    assetPrefix: process.env.NODE_ENV === 'production' ? '/DiscordEconomyBridge/' : undefined,
+    basePath: process.env.NODE_ENV === 'production' ? '/DiscordEconomyBridge' : undefined,
     output: "export",
   };
   
