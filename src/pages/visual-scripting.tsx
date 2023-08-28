@@ -299,6 +299,9 @@ export default function EditConfig() {
 
     const onKeyUp = (event: globalThis.KeyboardEvent) => {
         if (event.key === "Delete" || event.key === "Backspace") {
+
+            if(document.activeElement?.tagName === "INPUT") return;
+            
             if (selectedNode !== undefined) {
                 if (selectedNodeEdge !== undefined) {
                     remove_connection(selectedNode, selectedNodeEdge, "out");
