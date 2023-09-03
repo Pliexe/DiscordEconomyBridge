@@ -63,7 +63,8 @@
             }
         }
 
-        .exportedConf {
+        .exportedConf,
+        .importConf {
 
             position: absolute;
             top: 0;
@@ -100,6 +101,73 @@
                 overflow: hidden;
                 transition: all .5s;
 
+
+                textarea {
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgb(1 / 70, 1 / 65, 1 / 65);
+                    // Make the textarea look like a code block
+                    font-family: 'Courier New', Courier, monospace;
+                    font-size: 1rem;
+                    color: black;
+                    border: none;
+                    outline: none;
+                    resize: none;
+                    padding: 1rem;
+
+                    background: url(http://i.imgur.com/2cOaJ.png);
+                    // invert only the background
+                    -webkit-filter: invert(1);
+                    
+                    background-attachment: local;
+                    background-repeat: no-repeat;
+                    padding-left: 35px;
+                    padding-top: 10px;
+                    border-color: #ccc;
+
+                    &::-webkit-scrollbar {
+                        width: 10px;
+                    }
+
+                    &::-webkit-scrollbar-track {
+                        background: rgb(70, 65, 65);
+                    }
+
+                    &::-webkit-scrollbar-thumb {
+                        background: rgb(58, 58, 58);
+                        border-radius: 1rem;
+                    }
+
+                    &::-webkit-scrollbar-thumb:hover {
+                        background: rgb(43, 42, 42);
+                    }
+
+                    &::-webkit-scrollbar-thumb:active {
+                        background: rgb(43, 42, 42);
+                    }
+
+                    &::-webkit-scrollbar-corner {
+                        background: rgb(70, 65, 65);
+                    }
+
+                    &::-webkit-scrollbar-resizer {
+                        background: rgb(70, 65, 65);
+                    }
+
+                    &::-webkit-scrollbar-button {
+                        background: rgb(70, 65, 65);
+                    }
+
+                    &::-webkit-scrollbar-button:hover {
+                        background: rgb(43, 42, 42);
+                    }
+
+                    &::-webkit-scrollbar-button:active {
+                        background: rgb(43, 42, 42);
+                    }
+
+
+                }
 
                 .codeblock {
                     transition: all .5s;

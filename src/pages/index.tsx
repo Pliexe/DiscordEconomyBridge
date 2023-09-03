@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import Style from '../styles/pages/index.module.scss'
 import { useState } from "react";
 
@@ -10,8 +11,9 @@ export default function Home() {
                 <h1 style={{ fontWeight: "bold", fontSize: "5rem" }}>Work in progress! ;)</h1>
                 {/* <button style={{ color: "white" }} onClick={(ev) => setClicks(clicks + 1)}>Click me! {clicks}</button> */}
                 <p>Click the button below to checkout the experimental visual scripting!</p>
-                <button style={{ color: "white" }} onClick={(ev) => { window.location.href = "DiscordEconomyBridge/visual-scripting" }}
-                >Checkout Experimental Visual Scripting!</button>
+                <Link href="/visual-scripting">
+                    <button style={{ color: "white" }}>Checkout Experimental Visual Scripting!</button>
+                </Link>
             </div>
         </main>
     )

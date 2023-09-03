@@ -50,11 +50,8 @@ export default function EditConfig() {
         if (configuration == null) return;
         if (selectedCommand === undefined) return;
         if (configuration.commands[selectedCommand!!] === undefined) return;
-
         if (!(event.target as HTMLElement).id) {
-            if (tmpEdgeSelected !== null) {
-                setTmpEdgeSelected(null);
-            }
+            setTmpEdgeSelected(null);
             return;
         }
 
@@ -300,8 +297,8 @@ export default function EditConfig() {
     const onKeyUp = (event: globalThis.KeyboardEvent) => {
         if (event.key === "Delete" || event.key === "Backspace") {
 
-            if(document.activeElement?.tagName === "INPUT") return;
-            
+            if (document.activeElement?.tagName === "INPUT") return;
+
             if (selectedNode !== undefined) {
                 if (selectedNodeEdge !== undefined) {
                     remove_connection(selectedNode, selectedNodeEdge, "out");
@@ -370,6 +367,18 @@ export default function EditConfig() {
                         <button onClick={() => {
                             document.getElementsByClassName(Style.exportedConf).item(0)?.classList.toggle(Style.open);
                         }}>Export</button>
+
+                        <button onClick={() => {
+
+
+                            const elem = (document.getElementById("impInput") as HTMLInputElement | undefined);
+                            if (elem === undefined) return;
+                            // Format it in human readable format
+                            elem.value = JSON.stringify(configuration, null, 4);
+
+                            document.getElementsByClassName(Style.importConf).item(0)?.classList.toggle(Style.open);
+                        }}>Import</button>
+
                         <div className={Style.exportedConf}>
                             <div>
                                 <h1>Exported Configuration</h1>
@@ -395,6 +404,41 @@ export default function EditConfig() {
                                 </div>
                             </div>
                         </div>
+
+
+                        <div className={Style.importConf}>
+                            <div>
+                                <h1>Import Configuration</h1>
+
+                                <pre className="language-javascript">
+                                    <p className={Style.codeblock} ref={customCommandsConfDivRef}>
+                                        <code>
+                                            {/* {JSON.stringify(configuration, null, 4)} */}
+
+
+                                            {/* <input id="impInput" type="text" defaultValue={JSON.stringify(configuration, null, 4)} /> */}
+                                            {/* Same input but multiline */}
+                                            <textarea id="impInput" defaultValue={JSON.stringify(configuration, null, 4)} />
+                                        </code>
+                                    </p>
+                                </pre>
+
+                                <div>
+                                    <button onClick={() => {
+                                        const elem = (document.getElementById("impInput") as HTMLInputElement | undefined);
+                                        if (elem === undefined) return;
+                                        try {
+                                            const tmp = JSON.parse(elem.value);
+                                            setConfiguration(tmp);
+                                            alert("Imported!");
+                                        } catch (e) {
+                                            alert("Invalid JSON!");
+                                        }
+                                    }}>Import</button>
+                                    <button onClick={() => document.getElementsByClassName(Style.importConf).item(0)?.classList.toggle(Style.open)}>Close</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -412,6 +456,8 @@ export default function EditConfig() {
                         }}
 
                             onMouseDown={(event) => {
+                                setSelectedNode(undefined);
+
                                 // iff middle mouse button
                                 if (event.button !== 1) return;
                                 isDraggingRef.current = true;
@@ -511,7 +557,7 @@ export default function EditConfig() {
                                                     filter={selectedNode?.id === sourceNode.id && selectedNodeEdge === connection.source.output ? "drop-shadow(0 0 0.25rem rgba(0,0,0, 255))" : ""}
 
                                                     className={getEdgeInputType(targetNode.type, connection.target.input) === "flow" ? Style.stroke : ""}
-                                                    
+
                                                 />
 
 
