@@ -27,7 +27,7 @@ dependencies {
 
     compileOnly("org.spigotmc:spigot:1.8-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.1")
-    compileOnly("com.discordsrv:discordsrv:1.26.0")
+    compileOnly("com.discordsrv:discordsrv:1.27.0")
 
     compileOnly(fileTree("libs"))
 
@@ -36,9 +36,9 @@ dependencies {
 
     implementation ("com.google.code.gson:gson:2.10.1")
 
-    implementation("net.dv8tion:JDA:4.4.0_350") {
-        exclude("opus-java")
-        exclude("commons")
+
+    api("net.dv8tion:JDA:4.4.0_352.fix-5") {
+        exclude(module = "opus-java")
     }
 }
 

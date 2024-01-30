@@ -6,6 +6,7 @@ import me.pliexe.discordeconomybridge.discord.*
 import me.pliexe.discordeconomybridge.discord.commands.*
 import me.pliexe.discordeconomybridge.isConfigSection
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
+import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import java.lang.StringBuilder
 import java.util.*
@@ -169,7 +170,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
         if(cmd.isGame && playingGame.contains(event.author.id))
             return cmd.fail(event, "You are already playing an game!")
 
-        if(cmd.adminCommand && !(main.moderatorManager.isModerator(event.member!!) && main.pluginConfig.ignoreCooldownsForModerators))
+        if(cmd.adminCommand && !(main.moderatorManager.isModerator(event.member!!)))
             return cmd.noPermission(event)
 
         Thread {

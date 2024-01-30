@@ -21,6 +21,7 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction
 import net.dv8tion.jda.api.requests.restaction.WebhookMessageUpdateAction
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyAction
 import net.dv8tion.jda.api.requests.restaction.interactions.UpdateInteractionAction
+import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import org.bukkit.Server
 import org.bukkit.configuration.file.FileConfiguration
@@ -108,7 +109,7 @@ class DiscordMember(
     }
 
     fun rolesContain(roleID: String): Boolean{
-        return memberNative?.roles?.contains(roleID) ?: memberSRV!!.roles.contains(roleID)
+        return memberNative?.roles?.any { it.id == roleID } ?: memberSRV!!.roles.any { it.id == roleID }
     }
 }
 

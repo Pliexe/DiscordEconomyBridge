@@ -51,10 +51,7 @@ class Listener(val main: DiscordEconomyBridge, server: Server) : ListenerAdapter
                 updateCommands.addCommands(value.getSlashCommandDataNative())
             }
             updateCommands.queue { commands ->
-//                val modRoles = main.moderatorManager.getRoles()
-//                commands.forEach { command ->
-//                    command.updatePrivileges(guild, modRoles.map { CommandPrivilege.enableRole(it) })
-//                }
+                logger.info("Registered slash commands: [${commands.joinToString(", ")}]")
             }
 
             logger.info("Done registering slash commands for \"${guild.name}\" : ${guild.id}")
