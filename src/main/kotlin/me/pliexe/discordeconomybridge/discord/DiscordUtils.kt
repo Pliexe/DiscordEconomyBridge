@@ -4,6 +4,7 @@ import de.leonhard.storage.Config
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.clip.placeholderapi.PlaceholderAPI
 import me.pliexe.discordeconomybridge.isConfigSection
+import net.milkbowl.vault.economy.EconomyResponse
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
@@ -118,15 +119,26 @@ class UniversalPlayer(
     }
 
     fun depositPlayer(main: DiscordEconomyBridge, amount: Double) {
+        val res: EconomyResponse
+
         if(onlinePlayer == null)
-            main.getEconomy().depositPlayer(offlinePlayer!!, amount)
-        else main.getEconomy().depositPlayer(onlinePlayer, amount)
+            res = main.getEconomy().depositPlayer(offlinePlayer!!, amount)
+        else res = main.getEconomy().depositPlayer(onlinePlayer, amount)
+
+        if (res.type == EconomyResponse.ResponseType.FAILURE) {
+            throw Error("Failed to withdraw player! ${res.errorMessage}")
+        }
     }
 
     fun withdrawPlayer(main: DiscordEconomyBridge, amount: Double) {
+        val res: EconomyResponse
         if(onlinePlayer == null)
-            main.getEconomy().withdrawPlayer(offlinePlayer!!, amount)
-        else main.getEconomy().withdrawPlayer(onlinePlayer, amount)
+            res = main.getEconomy().withdrawPlayer(offlinePlayer!!, amount)
+        else res = main.getEconomy().withdrawPlayer(onlinePlayer, amount)
+
+        if (res.type == EconomyResponse.ResponseType.FAILURE) {
+            throw Error("Failed to withdraw player! ${res.errorMessage}")
+        }
     }
 }
 

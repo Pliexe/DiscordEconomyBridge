@@ -1,17 +1,24 @@
 package me.pliexe.discordeconomybridge.discord
 
+
+import com.github.sidhant92.boolparser.application.BooleanExpressionEvaluator
 import de.leonhard.storage.sections.FlatFileSection
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.formatMoney
 import net.dv8tion.jda.api.interactions.commands.OptionType
+import org.apache.commons.jexl3.JexlBuilder
+import org.apache.commons.jexl3.JexlException
+import org.apache.commons.jexl3.MapContext
 import java.text.DecimalFormat
 import java.time.format.DateTimeFormatter
-import kotlin.collections.HashMap
 import kotlin.random.Random
 
-//val regexFilter = Regex("<@|>")
-val varDetect = Regex("\\{var_[A-z]+}")
-val varDetectWithPrefix = Regex("\\{var_[A-z]+:[A-z]+}")
+
+val varDetect = Regex("(?<!\\\\)\\{var_[A-z]+}")
+val varDetectWithPrefix = Regex("(?<!\\\\)\\{var_[A-z]+:[A-z]+}")
+val varDetectStandard = Regex("(?<!\\\\)\\{([^}]*)}")
+val varDetectStandardEscaped = Regex("\\\\\\{([^}]*)}")
+val lettersDetect = Regex("^[a-zA-Z0-9]+\$")
 
 enum class CommandType {
     DiscordUser,
@@ -467,7 +474,10 @@ fun failIfEquals(section: FlatFileSection, values: HashMap<String, Any>, cond: S
     return false
 }
 
-fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any>): Boolean {
+
+var booleanExpressionEvaluator = BooleanExpressionEvaluator()
+fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any>, format: List<String>?, formatter: DecimalFormat, main: DiscordEconomyBridge): Boolean {
+
     section.get("onlyIf")?.also { cond ->
         when(cond) {
             is Boolean -> if(!cond) return false
@@ -480,6 +490,13 @@ fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any
                         is Double -> if(it != 0.0) return false
                         is Int -> if(it != 0) return false
                     }
+                } ?: run {
+                    val r = resolveStringWithValues(cond, values, format, formatter, main)
+                    ExpressionEvaluator.evaluateAsBoolean(r)?.also {
+                        return it
+                    }
+
+                    throw Exception("Invalid expression: $r in $section")
                 }
             }
         }
@@ -497,6 +514,13 @@ fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any
                         is Double -> if(it == 0.0) return false
                         is Int -> if(it == 0) return false
                     }
+                } ?: run {
+                    val r = resolveStringWithValues(cond, values, format, formatter, main)
+                    ExpressionEvaluator.evaluateAsBoolean(r)?.also {
+                        return it
+                    }
+
+                    throw Exception("Invalid expression: $r in $section")
                 }
             }
         }
@@ -520,6 +544,38 @@ fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any
 
     return true
 }
+
+class ExpressionEvaluator {
+    companion object {
+        private val jexlEngine = JexlBuilder().create()
+        private val jexlContext = MapContext()
+
+        fun evaluate(expression: String): Any? = try {
+            val jexlExpression = jexlEngine.createExpression(expression)
+            jexlExpression.evaluate(jexlContext)
+        } catch (e: JexlException) {
+            DiscordEconomyBridge.logger.warning("Could not evaluate expression '$expression'")
+            null
+        }
+
+        fun evaluateAsBoolean(expression: String, warn: Boolean = true): Boolean? {
+            val booleanValue = evaluate(expression) as? Boolean
+            if (booleanValue == null && warn) {
+                DiscordEconomyBridge.logger.warning("Could not evaluate expression '$expression' as Boolean")
+            }
+            return booleanValue
+        }
+
+        fun evaluateAsDouble(expression: String, warn: Boolean = true): Double? {
+            val doubleValue = evaluate(expression) as? Double
+            if (doubleValue == null && warn) {
+                DiscordEconomyBridge.logger.warning("Could not evaluate expression '$expression' as Boolean")
+            }
+            return doubleValue
+        }
+    }
+}
+
 
 fun resolveStringWithValues(str: String, values: HashMap<String, Any>, format: List<String>?, formatter: DecimalFormat, main: DiscordEconomyBridge): String {
     return str.replace(varDetectWithPrefix) {
@@ -585,12 +641,19 @@ fun resolveStringWithValues(str: String, values: HashMap<String, Any>, format: L
         values[propName]?.let { value ->
             if (value is String) value else (if(value is Number && format != null && format.contains(propName)) formatMoney(value, main, formatter) else value.toString())
         } ?: it.value
+    }.replace(varDetectStandard) {
+        (ExpressionEvaluator.evaluate(it.value)?.toString()?.let {
+            if (it.startsWith("[") && it.endsWith("]")) it.substring(1, it.length - 1) else it
+        } ?: it.value)
+    }.replace(varDetectStandardEscaped) {
+        it.value.substring(1)
     }
 }
 
 class CustomCommand(main: DiscordEconomyBridge, override val name: String, override val description: String, override val usage: String) : Command(main) {
 
     private var args: MutableList<Argument> = mutableListOf()
+
 
     fun loadArguments(inputSection: FlatFileSection) {
         val inputs = inputSection.singleLayerKeySet()
@@ -663,6 +726,18 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     inputSection.getDouble("$varName.failIfBiggerOrEqual"),
                                     inputSection.getDouble("$varName.failIfSmallerOrEqual")
                                     ))
+                            }
+                            "String", "Text" -> {
+                                args.add(StringArg(
+                                    varName,
+                                    inputSection.getOrDefault("$varName.name", "String"),
+                                    inputSection.getOrDefault("$varName.description", "No description set"),
+                                    CommandType.String,
+                                    inputSection.getOrDefault("$varName.required", true),
+                                    inputSection.getOrDefault("$varName.dontIgnore", false),
+                                    inputSection.get("$varName.failIf"),
+                                    inputSection.getString("$varName.logicFailReason")
+                                ))
                             }
                             "WholeNumber", "Int" -> {
                                 args.add(NumberArg(
@@ -880,21 +955,21 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                 when(type) {
                     "DefineNumber", "DefineDouble" -> {
                         section.getString("value")?.also {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 it.toDoubleOrNull()?.let { value -> values[varName] = value }
                             }
                         }
                     }
                     "DefineWholeNumber", "DefineInt" -> {
                         section.getString("value")?.also {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 it.toIntOrNull()?.let { value -> values[varName] = value }
                             }
                         }
                     }
                     "DefineText", "DefineString" -> {
                         section.getString("value")?.also {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 values[varName] = resolveStringWithValues(it, values, doFormat, formatter, main)
                             } else {
                                 section.getString("valueElse")?.also { otherIt ->
@@ -905,7 +980,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
                     "DefineLogicStatement", "DefineBoolean", "DefineBool" -> {
                         section.getString("value")?.also {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 values[varName] = it.toBoolean()
                             }
                         }
@@ -915,7 +990,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val max = section.get("max").let { if(it is String) it.toDouble() else null }
 
                         if(min != null && max != null) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 val value = Random.nextDouble(min, max + 1)
 
                                 if(!failIf(section, values, value))
@@ -925,11 +1000,11 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "RandomWholeNumber", "RandomInt", "RandomInteger" -> {
-                        val min = section.get("min").let { if(it is Number) it.toInt() else null }
-                        val max = section.get("max").let { if(it is Number) it.toInt() else null }
+                        val min = section.get("min").let { if(it is String) it.toInt() else null }
+                        val max = section.get("max").let { if(it is String) it.toInt() else null }
 
                         if(min != null && max != null) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 val value = Random.nextInt(min, max + 1)
 
                                 if(!failIf(section, values, value))
@@ -939,7 +1014,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "RandomText", "RandomString" -> {
-                        if(actionConditionChecker(section, values)) {
+                        if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                             val texts = section.getStringList("options")
 
                             val value = texts[(0 until texts.size).random()]
@@ -950,7 +1025,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "TextEquals" -> {
-                        if(actionConditionChecker(section, values)) {
+                        if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                             var val1: String? = section.getString("text1")
                             var val2: String? = section.getString("text2")
 
@@ -967,7 +1042,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "NumberEquals" -> {
-                        if(actionConditionChecker(section, values)) {
+                        if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                             val num1Str = section.getString("num1")
                             val num2Str = section.getString("num2")
 
@@ -989,7 +1064,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "DiscordUserEquals", "DiscordMemberEquals" -> {
-                        if(actionConditionChecker(section, values)) {
+                        if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                             val user1 = section.getString("user1")
                             val user2 = section.getString("user2")
 
@@ -1029,7 +1104,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1051,7 +1126,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1073,7 +1148,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1095,7 +1170,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1117,12 +1192,19 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val playerStr = section.getString("player")
 
                         if(amountStr != null && playerStr != null) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 if(values[playerStr] is UniversalPlayer) {
                                     var amount: Double? = amountStr.toDoubleOrNull()
 
                                     if(amount == null)
-                                        values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
+                                    {
+                                        if (lettersDetect.find(amountStr) == null) {
+                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), false)?.let { amount = it }
+                                        } else
+                                        {
+                                            values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
+                                        }
+                                    }
 
                                     if(amount != null)
                                         (values[playerStr] as UniversalPlayer).depositPlayer(main, amount!!)
@@ -1136,12 +1218,19 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val playerStr = section.getString("player")
 
                         if(amountStr != null && playerStr != null) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 if(values[playerStr] is UniversalPlayer) {
                                     var amount: Double? = amountStr.toDoubleOrNull()
 
                                     if(amount == null)
-                                        values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
+                                    {
+                                        if (lettersDetect.find(amountStr) == null) {
+                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), false)?.let { amount = it }
+                                        } else
+                                        {
+                                            values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
+                                        }
+                                    }
 
                                     if(amount != null)
                                         (values[playerStr] as UniversalPlayer).withdrawPlayer(main, amount!!)
@@ -1155,7 +1244,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val isNotNullStr = section.getString("isNotNull") ?: section.getString("isNotUnset") ?: section.getString("isSet")
 
                         if(isNullStr != null || isNotNullStr != null) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 if(isNullStr != null)
                                 {
                                     values[isNullStr].also {
@@ -1174,7 +1263,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val value = section.getString("value")
 
                         if(value != null) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 values[value]?.also {
                                     values[varName] = if(it is Boolean) !it else false
                                 } ?: run { values[varName] = true }
@@ -1183,7 +1272,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "GetCommandExecutorPlayer" -> {
-                        if(actionConditionChecker(section, values)) {
+                        if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                             val playerUuid = main.linkHandler.getUuid(event.author.id)
 
                             if(playerUuid != null) {
@@ -1196,7 +1285,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val value = section.getString("from")
 
                         if(value != null) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 val uuid = values[value]?.let {
                                     when(it) {
                                         is DiscordUser -> main.linkHandler.getUuid(it.id)
@@ -1223,12 +1312,41 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         }
                     }
 
+                    "CheckBalance" -> {
+                        val playerStr = section.getString("player")
+                        val amountStr = section.getString("amount")
+
+                        if(playerStr != null && amountStr != null) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
+                                val player = values[playerStr] as? UniversalPlayer
+                                if(player != null) {
+
+                                    var amount: Double? = amountStr.toDoubleOrNull()
+
+                                    if(amount == null)
+                                    {
+                                        if (lettersDetect.find(amountStr) == null) {
+                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), false)?.let { amount = it }
+                                        } else
+                                        {
+                                            values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
+                                        }
+                                    }
+
+                                    if(amount != null)
+                                        values[varName] = main.getEconomy().getBalance(player.offlinePlayer) >= amount!!
+
+                                } else values[varName] = false
+                            }
+                        }
+                    }
+
                     "AddNumber" -> {
                         val num1str = section.getString("num1")
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1257,7 +1375,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1286,7 +1404,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1315,7 +1433,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1343,7 +1461,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                         val num2str = section.getString("num2")
 
                         if(num1str != null && num2str != num1str) {
-                            if(actionConditionChecker(section, values)) {
+                            if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                                 var num1: Double? = num1str.toDoubleOrNull()
                                 var num2: Double? = num2str.toDoubleOrNull()
 
@@ -1368,7 +1486,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "EarlyMessage" -> {
-                        if(actionConditionChecker(section, values)) {
+                        if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                             event.sendYMLEmbed("${section.pathPrefix}.message", main.customCommandsConfig, { str ->
                                 setCommandPlaceholders(resolveStringWithValues(str, values, doFormat, formatter, main), event.prefix, event.commandName, description, usage)
                             }).queue()
@@ -1377,7 +1495,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     }
 
                     "FailMessage" -> {
-                        if(actionConditionChecker(section, values)) {
+                        if(actionConditionChecker(section, values, doFormat, formatter, main)) {
                             val message = section.getString("message")
                             if(message != null)
                             {

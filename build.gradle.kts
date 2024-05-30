@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.pliexe.discordeconomybridge"
-version = "4.9"
+version = "4.10"
 
 repositories {
     mavenCentral()
@@ -31,10 +31,12 @@ dependencies {
 
     compileOnly(fileTree("libs"))
 
-    api("ch.qos.logback:logback-classic:1.2.10")
+    api("ch.qos.logback:logback-classic:1.4.12")
     api("com.github.simplix-softworks:simplixstorage:3.2.4")
 
     implementation ("com.google.code.gson:gson:2.10.1")
+    implementation ("com.github.sidhant92:boolparser:1.0.3")
+    implementation ("org.apache.commons:commons-jexl3:3.3")
 
 
     api("net.dv8tion:JDA:4.4.0_352.fix-5") {

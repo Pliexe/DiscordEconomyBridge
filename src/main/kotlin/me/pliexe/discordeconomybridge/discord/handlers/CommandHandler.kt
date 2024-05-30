@@ -114,6 +114,7 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
                             "WholeNumber", "Integer", "Int" -> addInputToUsage(nm, "whole_number")
                             "DiscordUser" -> addInputToUsage(nm, "discord_user")
                             "DiscordMember" -> addInputToUsage(nm, "discord_member")
+                            "String", "Text" -> addInputToUsage(nm, "text")
                         }
                     }
 
