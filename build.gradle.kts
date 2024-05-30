@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.pliexe.discordeconomybridge"
-version = "5.0"
+version = "5.1"
 
 repositories {
     mavenCentral()
@@ -35,7 +35,6 @@ dependencies {
     api("com.github.simplix-softworks:simplixstorage:3.2.4")
 
     implementation ("com.google.code.gson:gson:2.10.1")
-    implementation ("com.github.sidhant92:boolparser:1.0.3")
     implementation ("org.apache.commons:commons-jexl3:3.3")
 
 

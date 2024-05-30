@@ -1,7 +1,6 @@
 package me.pliexe.discordeconomybridge.discord
 
 
-import com.github.sidhant92.boolparser.application.BooleanExpressionEvaluator
 import de.leonhard.storage.sections.FlatFileSection
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.formatMoney
@@ -474,8 +473,6 @@ fun failIfEquals(section: FlatFileSection, values: HashMap<String, Any>, cond: S
     return false
 }
 
-
-var booleanExpressionEvaluator = BooleanExpressionEvaluator()
 fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any>, format: List<String>?, formatter: DecimalFormat, main: DiscordEconomyBridge): Boolean {
 
     section.get("onlyIf")?.also { cond ->
@@ -492,7 +489,7 @@ fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any
                     }
                 } ?: run {
                     val r = resolveStringWithValues(cond, values, format, formatter, main)
-                    ExpressionEvaluator.evaluateAsBoolean(r)?.also {
+                    ExpressionEvaluator.evaluateAsBoolean(r, values)?.also {
                         return it
                     }
 
@@ -516,7 +513,7 @@ fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any
                     }
                 } ?: run {
                     val r = resolveStringWithValues(cond, values, format, formatter, main)
-                    ExpressionEvaluator.evaluateAsBoolean(r)?.also {
+                    ExpressionEvaluator.evaluateAsBoolean(r, values)?.also {
                         return it
                     }
 
@@ -548,30 +545,37 @@ fun actionConditionChecker(section: FlatFileSection, values: HashMap<String, Any
 class ExpressionEvaluator {
     companion object {
         private val jexlEngine = JexlBuilder().create()
-        private val jexlContext = MapContext()
 
-        fun evaluate(expression: String): Any? = try {
+        fun evaluate(expression: String, values: HashMap<String, Any>): Any? = try {
             val jexlExpression = jexlEngine.createExpression(expression)
-            jexlExpression.evaluate(jexlContext)
+            jexlExpression.evaluate(MapContext(values))
         } catch (e: JexlException) {
             DiscordEconomyBridge.logger.warning("Could not evaluate expression '$expression'")
             null
         }
 
-        fun evaluateAsBoolean(expression: String, warn: Boolean = true): Boolean? {
-            val booleanValue = evaluate(expression) as? Boolean
+        fun evaluateAsBoolean(expression: String, values: HashMap<String, Any>, warn: Boolean = true): Boolean? {
+            val booleanValue = evaluate(expression, values) as? Boolean
             if (booleanValue == null && warn) {
                 DiscordEconomyBridge.logger.warning("Could not evaluate expression '$expression' as Boolean")
             }
             return booleanValue
         }
 
-        fun evaluateAsDouble(expression: String, warn: Boolean = true): Double? {
-            val doubleValue = evaluate(expression) as? Double
+        fun evaluateAsDouble(expression: String, values: HashMap<String, Any>, warn: Boolean = true): Double? {
+            val doubleValue = evaluate(expression, values) as? Double
             if (doubleValue == null && warn) {
-                DiscordEconomyBridge.logger.warning("Could not evaluate expression '$expression' as Boolean")
+                DiscordEconomyBridge.logger.warning("Could not evaluate expression '$expression' as Double")
             }
             return doubleValue
+        }
+
+        fun evaluateAsInt(expression: String, values: HashMap<String, Any>, warn: Boolean = true): Int? {
+            val intValue = evaluate(expression, values) as? Int
+            if (intValue == null && warn) {
+                DiscordEconomyBridge.logger.warning("Could not evaluate expression '$expression' as Integer")
+            }
+            return intValue
         }
     }
 }
@@ -642,7 +646,7 @@ fun resolveStringWithValues(str: String, values: HashMap<String, Any>, format: L
             if (value is String) value else (if(value is Number && format != null && format.contains(propName)) formatMoney(value, main, formatter) else value.toString())
         } ?: it.value
     }.replace(varDetectStandard) {
-        (ExpressionEvaluator.evaluate(it.value)?.toString()?.let {
+        (ExpressionEvaluator.evaluate(it.value, values)?.toString()?.let {
             if (it.startsWith("[") && it.endsWith("]")) it.substring(1, it.length - 1) else it
         } ?: it.value)
     }.replace(varDetectStandardEscaped) {
@@ -956,14 +960,20 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     "DefineNumber", "DefineDouble" -> {
                         section.getString("value")?.also {
                             if(actionConditionChecker(section, values, doFormat, formatter, main)) {
-                                it.toDoubleOrNull()?.let { value -> values[varName] = value }
+                                it.toDoubleOrNull()?.let { value -> values[varName] = value } ?: run {
+                                    ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(it, values, doFormat, formatter, main), values)?.let {
+                                        value -> values[varName] = value
+                                    }
+                                }
                             }
                         }
                     }
                     "DefineWholeNumber", "DefineInt" -> {
                         section.getString("value")?.also {
                             if(actionConditionChecker(section, values, doFormat, formatter, main)) {
-                                it.toIntOrNull()?.let { value -> values[varName] = value }
+                                it.toIntOrNull()?.let { value -> values[varName] = value } ?: run {
+                                    ExpressionEvaluator.evaluateAsInt(resolveStringWithValues(it, values, doFormat, formatter, main), values)?.let { value -> values[varName] = value }
+                                }
                             }
                         }
                     }
@@ -981,7 +991,9 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                     "DefineLogicStatement", "DefineBoolean", "DefineBool" -> {
                         section.getString("value")?.also {
                             if(actionConditionChecker(section, values, doFormat, formatter, main)) {
-                                values[varName] = it.toBoolean()
+                                ExpressionEvaluator.evaluateAsBoolean(resolveStringWithValues(it, values, doFormat, formatter, main), values)?.let { value ->
+                                    values[varName] = value
+                                }
                             }
                         }
                     }
@@ -1199,7 +1211,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     if(amount == null)
                                     {
                                         if (lettersDetect.find(amountStr) == null) {
-                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), false)?.let { amount = it }
+                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), values, false)?.let { amount = it }
                                         } else
                                         {
                                             values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
@@ -1225,7 +1237,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     if(amount == null)
                                     {
                                         if (lettersDetect.find(amountStr) == null) {
-                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), false)?.let { amount = it }
+                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), values, false)?.let { amount = it }
                                         } else
                                         {
                                             values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
@@ -1326,7 +1338,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     if(amount == null)
                                     {
                                         if (lettersDetect.find(amountStr) == null) {
-                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), false)?.let { amount = it }
+                                            ExpressionEvaluator.evaluateAsDouble(resolveStringWithValues(amountStr, values, doFormat, formatter, main), values, false)?.let { amount = it }
                                         } else
                                         {
                                             values[amountStr]?.let { if(it is Double) amount = it else if(it is Int) amount = it.toDouble() }
