@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.pliexe.discordeconomybridge"
-version = "4.10"
+version = "5.0"
 
 repositories {
     mavenCentral()
