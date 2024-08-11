@@ -2,6 +2,7 @@ package me.pliexe.discordeconomybridge.discordsrv
 
 import github.scarsz.discordsrv.DiscordSRV
 import github.scarsz.discordsrv.dependencies.jda.api.entities.Guild
+import github.scarsz.discordsrv.dependencies.jda.api.events.ReadyEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.GenericComponentInteractionCreateEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.interaction.SlashCommandEvent
 import github.scarsz.discordsrv.dependencies.jda.api.events.message.MessageDeleteEvent
@@ -11,6 +12,8 @@ import github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.privi
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import me.pliexe.discordeconomybridge.discord.ComponentInteractionEvent
 import net.dv8tion.jda.api.exceptions.ContextException
+import java.util.Timer
+import java.util.TimerTask
 
 class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
     private val logger = main.logger
@@ -29,7 +32,14 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
             try {
                 main.defaultConfig.getStringList("slashCommandServers").forEach { guildID ->
                     val guild = DiscordSRV.getPlugin().jda.getGuildById(guildID)
-                    if(guild != null) registerSlashCommands(guild)
+                    if(guild != null) {
+                        main.logger.info("Trying to registering slash commands in 1s")
+                        Timer().schedule(object : TimerTask() {
+                            override fun run() {
+                                registerSlashCommands(guild)
+                            }
+                        }, 1000)
+                    }
                 }
             } catch (e: ClassCastException) {
                 main.logger.severe("Field \"slashCommandServers\" is of an invalid type, it must be an list of strings. The plugin will continue and ignore this configuration.")
@@ -72,5 +82,9 @@ class JDAListener(private val main: DiscordEconomyBridge): ListenerAdapter() {
 
     override fun onSlashCommand(event: SlashCommandEvent) {
         main.commandHandler.runCommand(event)
+    }
+
+    override fun onReady(event: ReadyEvent) {
+        main.logger.info("DISCORD SRV READY EVENT")
     }
 }

@@ -216,6 +216,7 @@ class DiscordEconomyBridge : JavaPlugin() {
             logger.severe("Config field: independent is of invalid type. The bot will continue to load.")
         }
 
+        pluginConfig.resetCache()
         moderatorManager.LoadFromConfig()
 
         if(!setupEconomy()) {

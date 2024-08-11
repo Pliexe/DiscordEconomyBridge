@@ -26,6 +26,8 @@ class Deb(val main: DiscordEconomyBridge) : CommandExecutor {
                 main.discordMessagesConfig.forceReload()
 //        main.customCommandsConfig.forceReload()
 
+                main.pluginConfig.resetCache()
+
                 sender.sendMessage("Done reloading!")
 
                 return true

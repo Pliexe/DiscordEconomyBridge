@@ -1,6 +1,26 @@
 package me.pliexe.discordeconomybridge
 
 class pluginConfig(val main: DiscordEconomyBridge) {
+
+    var allowedChannels = listOf<String>()
+    var disallowedChannels = listOf<String>()
+
+    fun resetCache() {
+        allowedChannels = try {
+            main.defaultConfig.getOrDefault("allowedChannels", listOf<String>())
+        } catch (e: ClassCastException) {
+            DiscordEconomyBridge.logger.severe("Field \"allowedChannels\" is of an invalid type, it must be an list of strings. The plugin will continue with the default value.")
+            listOf<String>()
+        }
+
+        disallowedChannels = try {
+            main.defaultConfig.getOrDefault("allowedChannels", listOf<String>())
+        } catch (e: ClassCastException) {
+            DiscordEconomyBridge.logger.severe("Field \"allowedChannels\" is of an invalid type, it must be an list of strings. The plugin will continue with the default value.")
+            listOf<String>()
+        }
+    }
+    
     val minBet: Double
         get() {
             return try {
@@ -68,6 +88,16 @@ class pluginConfig(val main: DiscordEconomyBridge) {
             } catch (e: ClassCastException) {
                 DiscordEconomyBridge.logger.severe("Field \"gameTimeout\" is of an invalid type, it must be an number. The plugin will continue with default value.")
                 300000L
+            }
+        }
+
+    val includeSlashCommandsInChanenlFilters: Boolean
+        get() {
+            return try {
+                main.defaultConfig.getOrDefault("includeSlashCommandsInChanenlFilters", false)
+            } catch (e: ClassCastException) {
+                DiscordEconomyBridge.logger.severe("Field \"includeSlashCommandsInChanenlFilters\" is of an invalid type, it must be an Boolean (true or false). The plugin will continue with the default value.")
+                false
             }
         }
 }

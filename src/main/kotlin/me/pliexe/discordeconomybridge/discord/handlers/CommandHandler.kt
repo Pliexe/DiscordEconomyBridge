@@ -6,7 +6,6 @@ import me.pliexe.discordeconomybridge.discord.*
 import me.pliexe.discordeconomybridge.discord.commands.*
 import me.pliexe.discordeconomybridge.isConfigSection
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
-import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import java.lang.StringBuilder
 import java.util.*
@@ -218,6 +217,10 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             if(cmd == null) return
         }
 
+        //        channel filters
+        if (main.pluginConfig.allowedChannels.isNotEmpty() && !main.pluginConfig.allowedChannels.contains(event.channel.id)) return
+        if (main.pluginConfig.disallowedChannels.contains(event.channel.id)) return
+
         val eventData = CommandEventData(
             main,
             event,
@@ -250,6 +253,10 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
             if(cmd == null) return
         }
 
+//        channel filters
+        if (main.pluginConfig.allowedChannels.isNotEmpty() && !main.pluginConfig.allowedChannels.contains(event.channel.id)) return
+        if (main.pluginConfig.disallowedChannels.contains(event.channel.id)) return
+
         val eventData = CommandEventData(
             main,
             event,
@@ -265,6 +272,19 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
     {
         val cmd = commands[event.name] ?: return
 
+        if (main.pluginConfig.includeSlashCommandsInChanenlFilters)
+        {
+            if (main.pluginConfig.allowedChannels.isNotEmpty() && !main.pluginConfig.allowedChannels.contains(event.channel.id)) {
+                event.reply("Commands are not allowed in this channel!").setEphemeral(true).queue()
+                return
+            }
+
+            if (main.pluginConfig.disallowedChannels.contains(event.channel.id)) {
+                event.reply("Commands are not allowed in this channel!").setEphemeral(true).queue()
+                return
+            }
+        }
+
         val eventData = CommandEventData(
             main,
             event,
@@ -278,6 +298,19 @@ class CommandHandler(private val main: DiscordEconomyBridge) {
     fun runCommand(event: net.dv8tion.jda.api.events.interaction.SlashCommandEvent)
     {
         val cmd = commands[event.name] ?: return
+
+        if (main.pluginConfig.includeSlashCommandsInChanenlFilters)
+        {
+            if (main.pluginConfig.allowedChannels.isNotEmpty() && !main.pluginConfig.allowedChannels.contains(event.channel.id)) {
+                event.reply("Commands are not allowed in this channel!").setEphemeral(true).queue()
+                return
+            }
+
+            if (main.pluginConfig.disallowedChannels.contains(event.channel.id)) {
+                event.reply("Commands are not allowed in this channel!").setEphemeral(true).queue()
+                return
+            }
+        }
 
         val eventData = CommandEventData(
             main,

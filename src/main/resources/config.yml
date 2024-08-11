@@ -49,8 +49,19 @@ ignoreCooldownsForModerators: false
 # Disable viewing balance of other users in !balance command
 disableViewingOfOtherUsers: false
 
+# Allowed channels, if not set, all channels are allowed
+allowedChannels:
+#  - "477617680631726092"
+#  - CHANNELID
+
+# Disallowed channels
+disallowedChannels:
+#  - "798427509553102860"
+#  - CHANNELID
+
+#includeSlashCommandsInChanenlFilters: true // default false
 discordModerators:
-#  - "477622334182785025"
+#  - "798427509553102860"
 #  - ROLEID2
 
 slashCommandServers:

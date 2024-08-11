@@ -1346,7 +1346,7 @@ class CustomCommand(main: DiscordEconomyBridge, override val name: String, overr
                                     }
 
                                     if(amount != null)
-                                        values[varName] = main.getEconomy().getBalance(player.offlinePlayer) >= amount!!
+                                        values[varName] = player.getBalance(main) >= amount!!
 
                                 } else values[varName] = false
                             }
