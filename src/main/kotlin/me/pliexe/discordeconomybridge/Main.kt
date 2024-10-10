@@ -2,7 +2,7 @@ package me.pliexe.discordeconomybridge
 
 import de.leonhard.storage.Config
 import de.leonhard.storage.Json
-import de.leonhard.storage.LightningBuilder
+import de.leonhard.storage.SimplixBuilder
 import de.leonhard.storage.internal.settings.ConfigSettings
 import de.leonhard.storage.internal.settings.DataType
 import de.leonhard.storage.internal.settings.ReloadSettings
@@ -21,7 +21,7 @@ import org.bukkit.ChatColor
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.util.FileUtil
 import java.io.File
-import java.lang.NumberFormatException
+import java.util.*
 import java.util.logging.Logger
 
 class DiscordEconomyBridge : JavaPlugin() {
@@ -89,11 +89,11 @@ class DiscordEconomyBridge : JavaPlugin() {
 
         DiscordEconomyBridge.logger = this.logger
 
-        userCache = LightningBuilder
+        userCache = SimplixBuilder
             .fromPath("users", dataFolder.path)
             .createJson()
 
-        defaultConfig = LightningBuilder
+        defaultConfig = SimplixBuilder
             .fromPath("config", dataFolder.path)
             .setReloadSettings(ReloadSettings.MANUALLY)
             .setDataType(DataType.SORTED)
@@ -101,7 +101,7 @@ class DiscordEconomyBridge : JavaPlugin() {
             .setConfigSettings(ConfigSettings.PRESERVE_COMMENTS)
             .createConfig()
 
-        discordMessagesConfig = LightningBuilder
+        discordMessagesConfig = SimplixBuilder
             .fromPath("discord_messages", dataFolder.path)
 //            .setReloadSettings(ReloadSettings.MANUALLY)
             .setDataType(DataType.SORTED)
@@ -109,7 +109,7 @@ class DiscordEconomyBridge : JavaPlugin() {
             .addInputStream(getResource("discord_messages.yml"))
             .createConfig()
 
-        pluginMessagesConfig = LightningBuilder
+        pluginMessagesConfig = SimplixBuilder
             .fromPath("plugin_messages", dataFolder.path)
 //            .setReloadSettings(ReloadSettings.MANUALLY)
             .setDataType(DataType.SORTED)
@@ -117,7 +117,7 @@ class DiscordEconomyBridge : JavaPlugin() {
             .addInputStream(getResource("plugin_messages.yml"))
             .createConfig()
 
-        customCommandsConfig = LightningBuilder
+        customCommandsConfig = SimplixBuilder
             .fromPath("custom_commands", dataFolder.path)
 //            .setReloadSettings(ReloadSettings.MANUALLY)
             .setDataType(DataType.SORTED)
@@ -133,7 +133,7 @@ class DiscordEconomyBridge : JavaPlugin() {
                 else if(description.version.replace(".", "").toInt() > version.replace(".", "").toInt()) {
                     logger.info("Updating Configurations to latest version!")
 
-                    val backupFileConf = File(dataFolder.path, "config.yml.old")
+                    val backupFileConf = File(dataFolder.path, "config.yml.${version}.old")
                     if(FileUtil.copy(defaultConfig.file, backupFileConf)) {
                         defaultConfig.set("VERSION", description.version)
                         defaultConfig.addDefaultsFromInputStream(getResource("config.yml"))
@@ -180,7 +180,7 @@ class DiscordEconomyBridge : JavaPlugin() {
         } else {
             logger.severe("Missing VERSION from config.yml! Setting it. Saving old config to config.yml.old")
 
-            val backupFile = File(dataFolder.path, "config.yml.old")
+            val backupFile = File(dataFolder.path, "config.yml.${Date().time}.old")
             FileUtil.copy(defaultConfig.file, backupFile)
             defaultConfig.set("VERSION", description.version)
         }
@@ -244,13 +244,32 @@ class DiscordEconomyBridge : JavaPlugin() {
 
             linkHandler.initNative()
 
-            jda = registerClient(this, defaultConfig, token)
-            if(jda == null) {
+            try {
+                jda = registerClient(this, defaultConfig, token)
+                if(jda == null) {
+                    server.consoleSender.sendMessage("Couldn't start discord client!")
+                    pluginLoader.disablePlugin(this)
+                    return
+                }
+                jda!!.awaitReady()
+
+                // --------------------------- External code --------------------------------------
+                // Taken from DiscordSRV source code
+                for (guild in jda!!.guilds) {
+                    guild.retrieveOwner(true).queue()
+                    guild.loadMembers()
+                        .onSuccess { members -> DiscordSRV.debug(("Loaded " + members.size).toString() + " members in guild " + guild) }
+                        .onError { throwable -> DiscordSRV.error("Failed to retrieve members of guild $guild", throwable) }
+                        .get() // block DiscordSRV startup until members are loaded
+                }
+                // -----------------------------------------------------------------------------------
+            } catch (e: Exception) {
                 server.consoleSender.sendMessage("Couldn't start discord client!")
+                e.printStackTrace()
                 pluginLoader.disablePlugin(this)
                 return
             }
-            jda!!.awaitReady()
+
 
             getCommand("unlinkdiscord").executor = UnlinkCommand(this)
             getCommand("linkdiscord").executor = LinkCommand(this)

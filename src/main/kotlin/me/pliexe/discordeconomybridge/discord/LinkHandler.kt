@@ -1,7 +1,7 @@
 package me.pliexe.discordeconomybridge.discord
 
 import de.leonhard.storage.Json
-import de.leonhard.storage.LightningBuilder
+import de.leonhard.storage.SimplixBuilder
 import github.scarsz.discordsrv.DiscordSRV
 import me.pliexe.discordeconomybridge.DiscordEconomyBridge
 import java.util.*
@@ -19,7 +19,7 @@ class LinkHandler(val main: DiscordEconomyBridge) {
     private var useDSRV = true
 
     fun initNative() {
-        jsonStorage = LightningBuilder
+        jsonStorage = SimplixBuilder
             .fromPath("linked_accounts", main.dataFolder.path)
             .createJson()
 
